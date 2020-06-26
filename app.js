@@ -5,6 +5,9 @@ const bodyParser = require('body-parser');
 
 // Router
 const users = require('./routes/users');
+const projects = require('./routes/projects');
+
+const index = require('./routes/index');
 // App instance
 const app = express();
 // Connect to DB
@@ -31,8 +34,9 @@ db.mongoose.connect(db.url, {
     console.log('Cannot connect to the Database!', err);
     process.exit();
   });
-
-app.use('/', users);
+app.use('/', index);
+app.use('/users', users);
+app.use('/projects', projects);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
