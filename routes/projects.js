@@ -4,11 +4,19 @@ const logger = require('../helpers/logger');
 const ProjectModel = require('../models/project');
 
 const router = express.Router();
-// Read
+/**
+ * Endpoint: /projects/:id
+ * Method: GET
+ * @function
+ * @name Read
+ * @param  {string}   id
+ * @return {object}  project
+ */
 router.get('/:id', async (req, res, next) => {
   try {
     const projects = await ProjectModel.findById({ _id: req.params.id });
     if (!projects) return res.sendStatus(404);
+
     res.send(projects).status(200);
   } catch (err) {
     logger.error(err);
@@ -16,27 +24,64 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// Update
+/**
+ * Endpoint: /projects/:id
+ * Method: PUT
+ * @function
+ * @name UpateProject
+ * @param  {string}   id
+ * @body   {object}  project
+ * @return {object}  project
+ */
 router.put('/:id', async (req, res, next) => {
   try {
-    res.send(await ProjectModel.findByIdAndUpdate({ _id: req.params.id }, req.body)).status(200);
+    let obj = await ProjectModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
+    if (!obj) return res.sendStatus(404);
+
+    obj = await ProjectModel.findById({ _id: req.params.id});
+
+    res.send(obj).status(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
   }
 });
 
-// Delete
+/**
+ * Endpoint: /projects/:id
+ * Method: DELETE
+ * @function
+ * @name delete
+ * @param  {string}   id
+ * @return {string}  message
+ */
 router.delete('/:id', async (req, res, next) => {
   try {
-    res.send(await ProjectModel.findByIdAndRemove({ _id: req.params.id })).status(200);
+    const obj = await ProjectModel.findByIdAndRemove({ _id: req.params.id });
+    if(!obj) return res.sendStatus(404);
+
+    res.send({ message:"Project successfully deleted" }).status(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
   }
 });
 
-// Create
+/**
+ * Endpoint: /projects/
+ * Method: POST
+ * @function
+ * @name create
+ * @body  {string}  site_type
+ * @body  {string}  email
+ * @body  {string}  password
+ * @body  {string}  display_name
+ * @body  {string}  url
+ * @body  {string}  run_option
+ * @body  {string}  is_active
+ * @body  {string}  user_id
+ * @return {object}  project
+ */
 router.post('/', async (req, res, next) => {
   try {
     const projects = new ProjectModel();
