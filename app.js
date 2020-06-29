@@ -3,6 +3,7 @@ require('dotenv').config({ path: './.env' });
 const express = require('express');
 const bodyParser = require('body-parser');
 
+const authMiddleware = require('./middleware/auth');
 // Router
 const users = require('./routes/users');
 const projects = require('./routes/projects');
@@ -36,7 +37,7 @@ db.mongoose.connect(db.url, {
   });
 app.use('/', index);
 app.use('/users', users);
-app.use('/projects', projects);
+app.use('/projects', authMiddleware, projects);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {

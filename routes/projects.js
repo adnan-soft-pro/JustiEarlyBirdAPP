@@ -38,7 +38,7 @@ router.put('/:id', async (req, res, next) => {
     let obj = await ProjectModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
     if (!obj) return res.sendStatus(404);
 
-    obj = await ProjectModel.findById({ _id: req.params.id});
+    obj = await ProjectModel.findById({ _id: req.params.id });
 
     res.send(obj).status(200);
   } catch (err) {
@@ -58,9 +58,9 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const obj = await ProjectModel.findByIdAndRemove({ _id: req.params.id });
-    if(!obj) return res.sendStatus(404);
+    if (!obj) return res.sendStatus(404);
 
-    res.send({ message:"Project successfully deleted" }).status(200);
+    res.send({ message: 'Project successfully deleted' }).status(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

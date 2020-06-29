@@ -1,8 +1,12 @@
+/* eslint-disable consistent-return */
+/* eslint-disable no-underscore-dangle */
 const express = require('express');
-const logger = require('../helpers/logger');
-const UserModel = require('../models/user');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const logger = require('../helpers/logger');
+const UserModel = require('../models/user');
+const authMiddleware = require('../middleware/auth');
+const config = require('../config/index').app;
 
 const router = express.Router();
 
@@ -14,12 +18,12 @@ const router = express.Router();
  * @param  {string}   id
  * @return {object}  user
  */
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', authMiddleware, async (req, res, next) => {
   try {
-    let obj = await UserModel.findById({ _id: req.params.id })
+    const obj = await UserModel.findById({ _id: req.params.id });
     if (!obj) return res.sendStatus(404);
 
-    delete obj["_doc"].password;
+    delete obj._doc.password;
 
     res.send(obj).status(200);
   } catch (err) {
@@ -39,13 +43,13 @@ router.get('/:id', async (req, res, next) => {
  * @body  {string}  user.password
  * @return {object}  user
  */
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', authMiddleware, async (req, res, next) => {
   try {
     let obj = await UserModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
     if (!obj) return res.sendStatus(404);
 
     obj = await UserModel.findById({ _id: req.params.id });
-    delete obj["_doc"].password;
+    delete obj._doc.password;
 
     res.send(obj).status(200);
   } catch (err) {
@@ -62,12 +66,12 @@ router.put('/:id', async (req, res, next) => {
  * @param  {string}   id
  * @return {string}  message
  */
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', authMiddleware, async (req, res, next) => {
   try {
     const obj = await UserModel.findByIdAndRemove({ _id: req.params.id });
-    if(!obj) return res.sendStatus(404);
+    if (!obj) return res.sendStatus(404);
 
-    res.send({ message:"User successfully deleted" }).status(200);
+    res.send({ message: 'User successfully deleted' }).status(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -108,22 +112,20 @@ router.post('/', async (req, res, next) => {
  */
 router.post('/login', async (req, res, next) => {
   try {
-    const email = req.body.email;
-    const password = req.body.password;
-
+    const { email, password } = req.body;
     const user = await UserModel.findOne({ email });
-    if(!user) return res.status(403).send('User is not found'); 
+    if (!user) return res.status(403).send('User is not found');
 
     const check = await bcrypt.compare(password, user.password);
-    if(!check) return res.status(403).send('Invalid password'); 
+    if (!check) return res.status(403).send('Invalid password');
 
     const object = {
       _id: user._id,
-      email: user.email
-    }
-    const token = jwt.sign(object, process.env.TOKEN_SECRET);
+      email: user.email,
+    };
+    const token = jwt.sign(object, config.jwtSecret);
 
-    res.header('token', token).send(token);
+    res.header('authorization', `Bearer ${token}`).send(token);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

@@ -31,13 +31,6 @@ UserSchema.pre('save', function (next) {
   next();
 });
 
-UserSchema.methods.comparePassword = (candidatePassword, cb) => {
-  bcrypt.compare(candidatePassword, this.password, (err, isMatch) => {
-    if (err) return cb(err);
-    cb(null, isMatch);
-  });
-};
-
 UserSchema.pre('findOneAndUpdate', function (next) {
   if (!this._update.password) return next();
   this._update.password = bcrypt.hashSync(this._update.password, 8);
