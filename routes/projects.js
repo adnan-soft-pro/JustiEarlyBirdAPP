@@ -1,6 +1,7 @@
 /* eslint-disable consistent-return */
 const express = require('express');
 const logger = require('../helpers/logger');
+const delteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
 
 const router = express.Router();
@@ -35,6 +36,7 @@ router.get('/:id', async (req, res, next) => {
  */
 router.put('/:id', async (req, res, next) => {
   try {
+    if (!req.body.is_active) await delteProjectFromDynamo(req.params.id);
     let obj = await ProjectModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
     if (!obj) return res.sendStatus(404);
 
@@ -57,6 +59,7 @@ router.put('/:id', async (req, res, next) => {
  */
 router.delete('/:id', async (req, res, next) => {
   try {
+    await delteProjectFromDynamo(req.params.id);
     const obj = await ProjectModel.findByIdAndRemove({ _id: req.params.id });
     if (!obj) return res.sendStatus(404);
 

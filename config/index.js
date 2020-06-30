@@ -6,4 +6,7 @@ module.exports = {
     port: process.env.PORT || 3000,
     jwtSecret: process.env.TOKEN_SECRET,
   },
+  aws: {
+    region: process.env.AWS_REGION || 'us-east-1',
+  },
 };
