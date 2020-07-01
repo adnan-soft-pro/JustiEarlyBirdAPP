@@ -3,6 +3,8 @@ require('dotenv').config({ path: './.env' });
 const express = require('express');
 const bodyParser = require('body-parser');
 
+const cors = require('cors');
+
 const authMiddleware = require('./middleware/auth');
 // Router
 const users = require('./routes/users');
@@ -19,6 +21,10 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 // parse application/json
 app.use(bodyParser.json());
+
+// Implementing cors
+
+app.use(cors());
 
 db.mongoose.connect(db.url, {
   useNewUrlParser: true,
