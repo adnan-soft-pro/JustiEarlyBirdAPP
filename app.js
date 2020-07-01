@@ -24,7 +24,9 @@ app.use(bodyParser.json());
 
 // Implementing cors
 
-app.use(cors());
+app.use(cors({
+  exposedHeaders: 'authorization',
+}));
 
 db.mongoose.connect(db.url, {
   useNewUrlParser: true,
