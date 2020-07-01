@@ -124,8 +124,8 @@ router.post('/login', async (req, res, next) => {
       email: user.email,
     };
     const token = jwt.sign(object, config.jwtSecret);
-
-    res.header('authorization', `Bearer ${token}`).send(token);
+    delete user._doc.password;
+    res.header('authorization', `Bearer ${token}`).send(user);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
