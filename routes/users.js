@@ -3,6 +3,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 const logger = require('../helpers/logger');
 const UserModel = require('../models/user');
 const authMiddleware = require('../middleware/auth');
@@ -126,6 +127,39 @@ router.post('/login', async (req, res, next) => {
     const token = jwt.sign(object, config.jwtSecret);
     delete user._doc.password;
     res.header('authorization', `Bearer ${token}`).send(user);
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+/**
+ * Endpoint: /users/login/social
+ * Method: POST
+ * @function
+ * @name authorization
+ * @body  {string}   email
+ * @body  {string}  password
+ * @return {object}  user
+ */
+router.post('/login/social', async (req, res, next) => {
+  try {
+    const userData = await axios.get(req.body.social === 'google' ? `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${req.body.token}`
+      : `https://graph.facebook.com/me?access_token=${req.body.token}&fields=email,name`);
+    let exsistUser = await UserModel.findOne({ email: userData.data.email });
+    if (!exsistUser) {
+      const user = new UserModel();
+      user.email = userData.data.email;
+      user.fullname = userData.data.name;
+      exsistUser = await user.save();
+    }
+
+    const object = {
+      _id: exsistUser._id,
+      email: exsistUser.email,
+    };
+    const token = jwt.sign(object, config.jwtSecret);
+    res.header('authorization', `Bearer ${token}`).send(exsistUser);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
