@@ -46,8 +46,8 @@ db.mongoose.connect(db.url, {
   });
 app.use('/', index);
 app.use('/users', users);
-app.use('/projects', authMiddleware, projects);
 app.use('/payment', authMiddleware, payment);
+app.use('/projects', projects);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {

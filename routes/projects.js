@@ -1,14 +1,16 @@
-/* eslint-disable import/order */
 /* eslint-disable camelcase */
+/* eslint-disable no-underscore-dangle */
 /* eslint-disable consistent-return */
+const jwt = require('jsonwebtoken');
+const router = require('express').Router();
+const logger = require('../helpers/logger');
+const config = require('../config/index').app;
 const delteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
+const authMiddleware = require('../middleware/auth');
 
-const config = require('../config');
-const logger = require('../helpers/logger');
-
-const stripe = require('stripe')(config.app.stripeSecret);
-const router = require('express').Router();
+// eslint-disable-next-line import/order
+const stripe = require('stripe')(config.stripeSecret);
 
 /**
  * Endpoint: /projects/:id
@@ -18,7 +20,7 @@ const router = require('express').Router();
  * @param  {string}   id
  * @return {object}  project
  */
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', authMiddleware, async (req, res, next) => {
   try {
     const projects = await ProjectModel.findById({ _id: req.params.id });
     if (!projects) return res.sendStatus(404);
@@ -39,7 +41,7 @@ router.get('/:id', async (req, res, next) => {
  * @body   {object}  project
  * @return {object}  project
  */
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', authMiddleware, async (req, res, next) => {
   try {
     if (!req.body.is_active) await delteProjectFromDynamo(req.params.id);
     let obj = await ProjectModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
@@ -62,7 +64,7 @@ router.put('/:id', async (req, res, next) => {
  * @param  {string}   id
  * @return {string}  message
  */
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', authMiddleware, async (req, res, next) => {
   try {
     await delteProjectFromDynamo(req.params.id);
     const obj = await ProjectModel.findByIdAndRemove({ _id: req.params.id });
@@ -77,7 +79,7 @@ router.delete('/:id', async (req, res, next) => {
 
 const oneDay = 3600 * 24;
 const laterPlanPerDay = 20;
-router.post('/:id/finish', async (req, res, next) => {
+router.post('/:id/finish', authMiddleware, async (req, res, next) => {
   try {
     const project = await ProjectModel.findById(req.params.id);
     if (!project) return res.status(404).send('Project not found');
@@ -145,28 +147,24 @@ router.post('/:id/pay', async (req, res, next) => {
  * @body  {string}  url
  * @return {object}  project
  */
-router.post('/', async (req, res, next) => {
+router.post('/', authMiddleware, async (req, res, next) => {
   try {
-    const { user } = req;
+    const decodedToken = jwt.decode(req.headers.authorization.replace('Bearer ', ''), config.jwtSecret);
     const {
       site_type,
       email,
       password,
-      display_name,
       url,
-      ...extra
+      is_active,
     } = req.body;
 
-    if (Object.keys(extra).length) {
-      return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
-    }
-
     const project = new ProjectModel({
-      user_id: user.id,
+      user_id: decodedToken._id,
       site_type,
       email,
+      is_active,
+      run_option: 1,
       password,
-      display_name,
       url,
     });
 
