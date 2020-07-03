@@ -18,6 +18,7 @@ const ProjectSchema = new Schema({
   charge_flow_status: { type: String, enum: ['not_needed', 'scheduled', '/1', '/2', '/4', 'done'] },
   initial_debt: { type: Number },
   debt: { type: Number },
+  last_charge_attempt_at: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');

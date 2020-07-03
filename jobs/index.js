@@ -5,7 +5,7 @@ const retryCharges = require('./retryCharges');
 
 module.exports.start = () => {
   // Runs every day at 12:00 a.m.
-  cron.schedule('* * * * *', async () => {
+  cron.schedule('0 0 * * *', async () => {
     await retryCharges();
     await startChargeFlows();
   });

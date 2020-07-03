@@ -1,9 +1,7 @@
 /* eslint-disable import/order */
 /* eslint-disable no-param-reassign */
-const config = require('../config').app;
 const logger = require('./logger');
-
-const stripe = require('stripe')(config.stripeSecret);
+const chargeForProject = require('./chargeForProject');
 
 const UserModel = require('../models/user');
 
@@ -23,13 +21,7 @@ module.exports = async (project, user = null) => {
     project.charge_flow_status = '/1';
     await project.save();
 
-    await stripe.charges.create({
-      customer: user.stripe_id,
-      source: project.stripe_payment_method_id,
-      amount: project.initial_debt,
-      currency: 'usd',
-      description: `project ${project.id}`,
-    });
+    await chargeForProject(project, user);
 
     logger.info(`Started charge flow for project ${project.id}`);
     return true;
