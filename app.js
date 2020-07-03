@@ -25,7 +25,6 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
 // Implementing cors
-
 app.use(cors({
   exposedHeaders: 'authorization',
 }));
@@ -69,5 +68,7 @@ app.use((err, req, res, next) => {
     error: err,
   });
 });
+
+require('./jobs').start();
 
 module.exports = app;

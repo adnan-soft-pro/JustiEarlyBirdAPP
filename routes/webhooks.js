@@ -39,7 +39,7 @@ const stripeEventHandlers = {
     const charge = req.body.data.object;
 
     if (!charge.description || !charge.description.startsWith('project ')) {
-      logger.warn(`Charge ${charge.id} containt invalid description ${charge.description}`);
+      logger.warn(`Charge ${charge.id} contains invalid description ${charge.description}`);
       return res.sendStatus(200);
     }
 
@@ -55,11 +55,12 @@ const stripeEventHandlers = {
       case ('/1'): {
         project.debt -= charge.amount;
         project.charge_flow_status = 'done';
+        logger.info(`Project ${projectId} paid (/1)`);
         await project.save();
         break;
       }
       default: {
-        logger.warn(`Charge ${charge.id} points to project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
+        logger.warn(`Charge ${charge.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
       }
     }
     res.sendStatus(200);
