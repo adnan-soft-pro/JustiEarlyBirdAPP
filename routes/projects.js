@@ -1,14 +1,15 @@
+/* eslint-disable import/order */
 /* eslint-disable camelcase */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable consistent-return */
 const router = require('express').Router();
 const logger = require('../helpers/logger');
 const config = require('../config/index').app;
+
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
-const authMiddleware = require('../middleware/auth');
+const startChargeFlow = require('../helpers/startChargeFlow');
 
-// eslint-disable-next-line import/order
 const stripe = require('stripe')(config.stripeSecret);
 
 /**
@@ -106,16 +107,16 @@ router.get('/', async (req, res, next) => {
 });
 
 const oneDay = 3600 * 24;
-const laterPlanPerDay = 20;
-router.post('/:id/finish', authMiddleware, async (req, res, next) => {
+const laterPlanPerDay = 20 * 100;
+router.post('/:id/finish', async (req, res, next) => {
   try {
     const { user } = req;
-
     const project = await ProjectModel.findById(req.params.id);
     if (!project) return res.status(404).send('Project not found');
-    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
+    if (project.user_id !== user.id) return res.status(400).send('Project Doesn\'t Belong To This User');
+    if (project.finished_at) return res.status(404).send('Project is already finished');
 
-    project.finished_at = new Date();
+    project.finished_at = new Date(Date.now() + oneDay * 10);
     project.active = false;
     await project.save();
 
@@ -157,12 +158,16 @@ router.post('/:id/pay', async (req, res, next) => {
     const { user } = req;
 
     const project = await ProjectModel.findById(req.params.id);
+
     if (!project) return res.status(404).send('Project not found');
     if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
 
     if (project.plan !== 'later_plan') return res.status(400).send('Project doesn\'t use LaterPlan');
     if (!project.finished_at) return res.status(400).send('Project is not finished yet');
-    if (project.charge_flow_status) return res.status(400).send('Charge flow is already started for this project');
+    if (project.charge_flow_status !== 'scheduled') return res.status(400).send('Charge flow is already started for this project');
+
+    const charge_flow_started = await startChargeFlow(project);
+    res.send({ charge_flow_started });
   } catch (err) {
     logger.error(err);
     next(new Error(err));

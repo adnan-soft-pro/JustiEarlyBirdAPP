@@ -35,6 +35,37 @@ const stripeEventHandlers = {
     res.sendStatus(200);
   },
 
+  'charge.succeeded': async (req, res) => {
+    const charge = req.body.data.object;
+
+    if (!charge.description || !charge.description.startsWith('project ')) {
+      logger.warn(`Charge ${charge.id} containt invalid description ${charge.description}`);
+      return res.sendStatus(200);
+    }
+
+    const projectId = charge.description.split(' ')[1];
+    const project = await ProjectModel.findById(projectId);
+
+    if (!project) {
+      logger.warn(`Charge ${charge.id} points to not existing project ${projectId}`);
+      return res.sendStatus(200);
+    }
+
+    switch (project.charge_flow_status) {
+      case ('/1'): {
+        project.debt -= charge.amount;
+        project.charge_flow_status = 'done';
+        await project.save();
+        break;
+      }
+      default: {
+        logger.warn(`Charge ${charge.id} points to project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
+      }
+    }
+    res.sendStatus(200);
+  },
+
+  'charge.failed': async (req, res) => res.sendStatus(200),
 };
 
 router.post('/stripe', async (req, res) => {
