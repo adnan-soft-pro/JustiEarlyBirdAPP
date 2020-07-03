@@ -12,7 +12,6 @@ module.exports = async (req, res, next) => {
 
     req.user = await UserModel.findById(decodedToken._id);
     if (!req.user) return res.status(401).send('You are not authorized');
-    console.log(req.user.id);
     next();
   } catch (err) {
     res.status(401).send('You are not authorized');
