@@ -106,7 +106,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-const oneDay = 3600 * 24;
+const oneDay = 24 * 60 * 60 * 1000;
 const laterPlanPerDay = 20 * 100;
 router.post('/:id/finish', async (req, res, next) => {
   try {
@@ -116,7 +116,7 @@ router.post('/:id/finish', async (req, res, next) => {
     if (project.user_id !== user.id) return res.status(400).send('Project Doesn\'t Belong To This User');
     if (project.finished_at) return res.status(404).send('Project is already finished');
 
-    project.finished_at = new Date(Date.now() + oneDay * 10);
+    project.finished_at = new Date();
     project.active = false;
     await project.save();
 
