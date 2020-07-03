@@ -77,6 +77,27 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
   }
 });
 
+/**
+ * Endpoint: /projects
+ * Method: GET
+ * @function
+ * @name getProjects
+ * @return {Array}  projects
+ */
+router.get('/', async (req, res, next) => {
+  const decodedToken = jwt.decode(req.headers.authorization.replace('Bearer ', ''), config.jwtSecret);
+  try {
+    const projects = await ProjectModel.find({ user_id: decodedToken._id.toString() });
+
+    if (!projects) return res.sendStatus(404);
+
+    res.send(projects).status(200);
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
 const oneDay = 3600 * 24;
 const laterPlanPerDay = 20;
 router.post('/:id/finish', authMiddleware, async (req, res, next) => {
