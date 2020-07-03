@@ -7,7 +7,6 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const logger = require('../helpers/logger');
 const UserModel = require('../models/user');
-const authMiddleware = require('../middleware/auth');
 const config = require('../config/index').app;
 
 const stripe = require('stripe')(config.stripeSecret);
@@ -22,8 +21,9 @@ const router = express.Router();
  * @param  {string}   id
  * @return {object}  user
  */
-router.get('/:id', authMiddleware, async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
+    if (req.params.id !== req.user.id) return res.sendStatus(403);
     const obj = await UserModel.findById(req.params.id);
     if (!obj) return res.sendStatus(404);
 
@@ -47,8 +47,9 @@ router.get('/:id', authMiddleware, async (req, res, next) => {
  * @body  {string}  user.password
  * @return {object}  user
  */
-router.put('/:id', authMiddleware, async (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
+    if (req.params.id !== req.user.id) return res.sendStatus(403);
     let obj = await UserModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
     if (!obj) return res.sendStatus(404);
 
@@ -70,9 +71,10 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
  * @param  {string}   id
  * @return {string}  message
  */
-router.delete('/:id', authMiddleware, async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
-    const obj = await UserModel.findByIdAndRemove({ _id: req.params.id });
+    if (req.params.id !== req.user.id) return res.sendStatus(403);
+    const obj = await UserModel.findByIdAndRemove(req.params.id);
     if (!obj) return res.sendStatus(404);
 
     res.send({ message: 'User successfully deleted' }).status(200);

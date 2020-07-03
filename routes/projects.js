@@ -1,11 +1,10 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable consistent-return */
-const jwt = require('jsonwebtoken');
 const router = require('express').Router();
 const logger = require('../helpers/logger');
 const config = require('../config/index').app;
-const delteProjectFromDynamo = require('../helpers/deleteDynamoData');
+const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
 const authMiddleware = require('../middleware/auth');
 
@@ -20,12 +19,15 @@ const stripe = require('stripe')(config.stripeSecret);
  * @param  {string}   id
  * @return {object}  project
  */
-router.get('/:id', authMiddleware, async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
-    const projects = await ProjectModel.findById({ _id: req.params.id });
-    if (!projects) return res.sendStatus(404);
+    const { user } = req;
 
-    res.send(projects).status(200);
+    const project = await ProjectModel.findById(req.params.id);
+    if (!project) return res.status(404).send('Project not found');
+    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
+
+    res.send(project);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -41,15 +43,18 @@ router.get('/:id', authMiddleware, async (req, res, next) => {
  * @body   {object}  project
  * @return {object}  project
  */
-router.put('/:id', authMiddleware, async (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
-    if (!req.body.is_active) await delteProjectFromDynamo(req.params.id);
-    let obj = await ProjectModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
-    if (!obj) return res.sendStatus(404);
+    const { user } = req;
 
-    obj = await ProjectModel.findById({ _id: req.params.id });
+    const project = await ProjectModel.findById(req.params.id);
+    if (!project) return res.status(404).send('Project not found');
+    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
 
-    res.send(obj).status(200);
+    if (!req.body.is_active) await deleteProjectFromDynamo(req.params.id);
+    await project.replaceOne(req.body);
+
+    res.send(await ProjectModel.findById(req.params.id).exec());
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -64,11 +69,16 @@ router.put('/:id', authMiddleware, async (req, res, next) => {
  * @param  {string}   id
  * @return {string}  message
  */
-router.delete('/:id', authMiddleware, async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
-    await delteProjectFromDynamo(req.params.id);
-    const obj = await ProjectModel.findByIdAndRemove({ _id: req.params.id });
-    if (!obj) return res.sendStatus(404);
+    const { user } = req;
+
+    const project = await ProjectModel.findById(req.params.id);
+    if (!project) return res.status(404).send('Project not found');
+    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
+
+    await deleteProjectFromDynamo(req.params.id);
+    await project.deleteOne();
 
     res.send({ message: 'Project successfully deleted' }).status(200);
   } catch (err) {
@@ -85,13 +95,10 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
  * @return {Array}  projects
  */
 router.get('/', async (req, res, next) => {
-  const decodedToken = jwt.decode(req.headers.authorization.replace('Bearer ', ''), config.jwtSecret);
   try {
-    const projects = await ProjectModel.find({ user_id: decodedToken._id.toString() });
-
-    if (!projects) return res.sendStatus(404);
-
-    res.send(projects).status(200);
+    const { user } = req;
+    const projects = await ProjectModel.find({ user_id: user.id });
+    res.send(projects);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -102,9 +109,11 @@ const oneDay = 3600 * 24;
 const laterPlanPerDay = 20;
 router.post('/:id/finish', authMiddleware, async (req, res, next) => {
   try {
+    const { user } = req;
+
     const project = await ProjectModel.findById(req.params.id);
     if (!project) return res.status(404).send('Project not found');
-    if (project.finished_at) return res.status(404).send('Project is already finished');
+    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
 
     project.finished_at = new Date();
     project.active = false;
@@ -145,8 +154,12 @@ router.post('/:id/finish', authMiddleware, async (req, res, next) => {
 
 router.post('/:id/pay', async (req, res, next) => {
   try {
+    const { user } = req;
+
     const project = await ProjectModel.findById(req.params.id);
     if (!project) return res.status(404).send('Project not found');
+    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
+
     if (project.plan !== 'later_plan') return res.status(400).send('Project doesn\'t use LaterPlan');
     if (!project.finished_at) return res.status(400).send('Project is not finished yet');
     if (project.charge_flow_status) return res.status(400).send('Charge flow is already started for this project');
@@ -168,23 +181,26 @@ router.post('/:id/pay', async (req, res, next) => {
  * @body  {string}  url
  * @return {object}  project
  */
-router.post('/', authMiddleware, async (req, res, next) => {
+router.post('/', async (req, res, next) => {
   try {
-    const decodedToken = jwt.decode(req.headers.authorization.replace('Bearer ', ''), config.jwtSecret);
+    const { user } = req;
+
     const {
       site_type,
       email,
       password,
       url,
-      is_active,
+      ...extra
     } = req.body;
 
+    if (Object.keys(extra).length) {
+      return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
+    }
+
     const project = new ProjectModel({
-      user_id: decodedToken._id,
+      user_id: user.id,
       site_type,
       email,
-      is_active,
-      run_option: 1,
       password,
       url,
     });
