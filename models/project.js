@@ -13,7 +13,10 @@ const ProjectSchema = new Schema({
   plan: { type: String, enum: ['now_plan', 'later_plan'] },
   stripe_subscription_id: { type: String },
   stripe_payment_method_id: { type: String },
-  ended_at: { type: Date },
+  finished_at: { type: Date },
+  charge_flow_status: { type: String, enum: ['not_needed', 'scheduled', '/1', '/2', '/4', 'done'] },
+  initial_debt: { type: Number },
+  debt: { type: Number },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');

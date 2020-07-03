@@ -1,10 +1,13 @@
 /* eslint-disable import/order */
 /* eslint-disable camelcase */
 /* eslint-disable consistent-return */
-const logger = require('../helpers/logger');
 const delteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
 
+const config = require('../config');
+const logger = require('../helpers/logger');
+
+const stripe = require('stripe')(config.app.stripeSecret);
 const router = require('express').Router();
 
 /**
@@ -72,6 +75,64 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+const oneDay = 3600 * 24;
+const laterPlanPerDay = 20;
+router.post('/:id/finish', async (req, res, next) => {
+  try {
+    const project = await ProjectModel.findById(req.params.id);
+    if (!project) return res.status(404).send('Project not found');
+    if (project.finished_at) return res.status(404).send('Project is already finished');
+
+    project.finished_at = new Date();
+    project.active = false;
+    await project.save();
+
+    switch (project.plan) {
+      case ('now_plan'): {
+        if (project.stripe_subscription_id) {
+          await stripe.subscriptions.del(project.stripe_subscription_id);
+        } else {
+          logger.warn(`Project with stripe_subscription_id:${project.stripe_subscription_id} not found`);
+          res.status(500).send(`Project with stripe_subscription_id:${project.stripe_subscription_id} not found`);
+        }
+        break;
+      }
+
+      case ('later_plan'): {
+        const daysInUse = Math.floor((project.finished_at - project.createdAt) / oneDay);
+        const initialDebt = (daysInUse - 3) * laterPlanPerDay;
+        project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
+        project.debt = initialDebt <= 0 ? 0 : initialDebt;
+        project.charge_flow_status = initialDebt <= 0 ? 'not_needed' : 'scheduled';
+        await project.save();
+        break;
+      }
+
+      default: {
+        return res.status(500).send('Project has unknown plan');
+      }
+    }
+
+    res.send(project);
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+router.post('/:id/pay', async (req, res, next) => {
+  try {
+    const project = await ProjectModel.findById(req.params.id);
+    if (!project) return res.status(404).send('Project not found');
+    if (project.plan !== 'later_plan') return res.status(400).send('Project doesn\'t use LaterPlan');
+    if (!project.finished_at) return res.status(400).send('Project is not finished yet');
+    if (project.charge_flow_status) return res.status(400).send('Charge flow is already started for this project');
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
 /**
  * Endpoint: /projects/
  * Method: POST
@@ -82,9 +143,6 @@ router.delete('/:id', async (req, res, next) => {
  * @body  {string}  password
  * @body  {string}  display_name
  * @body  {string}  url
- * @body  {string}  run_option
- * @body  {string}  is_active
- * @body  {string}  user_id
  * @return {object}  project
  */
 router.post('/', async (req, res, next) => {

@@ -59,6 +59,36 @@ router.post('/:project_id/now_plan', async (req, res, next) => {
   }
 });
 
+router.post('/:project_id/later_plan', async (req, res, next) => {
+  try {
+    const { user } = req;
+    const projectId = req.params.project_id;
+    const paymentMethodId = req.body.payment_method;
+
+    if (!paymentMethodId) return res.status(400).send('payment_method is required');
+    const project = await ProjectModel.findById(projectId).exec();
+    if (!project) return res.status(404).send('Project Not Found');
+    if (project.user_id !== user.id) return res.status(400).send('Project Doesn\'t Belong To This User');
+    if (project.stripe_subscription_id || project.stripe_payment_method_id) {
+      return res.status(400).send('Project Already Has a Subscription or a Payment Method');
+    }
+
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (paymentMethod.customer !== user.stripe_id) {
+      return res.status(400).send('This payment_method doesn\'t belong to the current user');
+    }
+
+    project.is_active = true;
+    project.stripe_payment_method_id = paymentMethodId;
+    project.plan = 'later_plan';
+
+    res.send(await project.save());
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
 router.delete('/:project_id/now_plan', async (req, res) => {
   try {
     const { user } = req;
