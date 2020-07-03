@@ -1,10 +1,12 @@
+/* eslint-disable import/order */
+/* eslint-disable camelcase */
 /* eslint-disable consistent-return */
-const express = require('express');
 const logger = require('../helpers/logger');
 const delteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
 
-const router = express.Router();
+const router = require('express').Router();
+
 /**
  * Endpoint: /projects/:id
  * Method: GET
@@ -87,16 +89,30 @@ router.delete('/:id', async (req, res, next) => {
  */
 router.post('/', async (req, res, next) => {
   try {
-    const projects = new ProjectModel();
-    projects.site_type = req.body.site_type;
-    projects.email = req.body.email;
-    projects.password = req.body.password;
-    projects.display_name = req.body.display_name;
-    projects.url = req.body.url;
-    projects.run_option = req.body.run_option;
-    projects.is_active = req.body.is_active;
-    projects.user_id = req.body.user_id;
-    res.send(await projects.save()).status(200);
+    const { user } = req;
+    const {
+      site_type,
+      email,
+      password,
+      display_name,
+      url,
+      ...extra
+    } = req.body;
+
+    if (Object.keys(extra).length) {
+      return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
+    }
+
+    const project = new ProjectModel({
+      user_id: user.id,
+      site_type,
+      email,
+      password,
+      display_name,
+      url,
+    });
+
+    res.send(await project.save());
   } catch (err) {
     logger.error(err);
     next(new Error(err));

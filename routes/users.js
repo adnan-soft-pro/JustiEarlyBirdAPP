@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 /* eslint-disable consistent-return */
 /* eslint-disable no-underscore-dangle */
 const express = require('express');
@@ -8,6 +9,8 @@ const logger = require('../helpers/logger');
 const UserModel = require('../models/user');
 const authMiddleware = require('../middleware/auth');
 const config = require('../config/index').app;
+
+const stripe = require('stripe')(config.stripeSecret);
 
 const router = express.Router();
 
@@ -21,7 +24,7 @@ const router = express.Router();
  */
 router.get('/:id', authMiddleware, async (req, res, next) => {
   try {
-    const obj = await UserModel.findById({ _id: req.params.id });
+    const obj = await UserModel.findById(req.params.id);
     if (!obj) return res.sendStatus(404);
 
     delete obj._doc.password;
@@ -91,11 +94,17 @@ router.delete('/:id', authMiddleware, async (req, res, next) => {
  */
 router.post('/', async (req, res, next) => {
   try {
-    const user = new UserModel();
+    let user = new UserModel();
     user.email = req.body.email;
     user.fullname = req.body.fullname;
     user.password = req.body.password;
-    res.send(await user.save()).status(200);
+    user = await user.save();
+
+    const customer = await stripe.customers.create({ email: user.email });
+    user.stripe_id = customer.id;
+    user = await user.save();
+
+    res.send(user);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

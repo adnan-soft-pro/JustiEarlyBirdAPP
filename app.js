@@ -9,6 +9,7 @@ const authMiddleware = require('./middleware/auth');
 // Router
 const users = require('./routes/users');
 const projects = require('./routes/projects');
+const payment = require('./routes/payment');
 
 const index = require('./routes/index');
 // App instance
@@ -46,6 +47,7 @@ db.mongoose.connect(db.url, {
 app.use('/', index);
 app.use('/users', users);
 app.use('/projects', authMiddleware, projects);
+app.use('/payment', authMiddleware, payment);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
