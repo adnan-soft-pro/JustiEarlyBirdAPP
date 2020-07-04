@@ -7,10 +7,10 @@ const UserModel = require('../models/user');
 
 const dividers = { '/1': 1, '/2': 2, '/4': 4 };
 
-module.exports = async (project, user = null) => {
+module.exports = async (project, user = null, willThrow = false) => {
   if (!user) {
     // eslint-disable-next-line no-param-reassign
-    user = await UserModel.findById();
+    user = await UserModel.findById(project.user_id);
     if (!user) {
       logger.warn(`Project ${project.id} points to not existing user ${project.user_id}`);
       return;
@@ -22,11 +22,19 @@ module.exports = async (project, user = null) => {
 
   logger.info(`Attempt to charge for project ${project.id} (${project.charge_flow_status})`);
 
-  await stripe.charges.create({
-    customer: user.stripe_id,
-    source: project.stripe_payment_method_id,
-    amount: chargeAmount,
-    currency: 'usd',
-    description: `project ${project.id}`,
-  });
+  try {
+    await stripe.paymentIntents.create({
+      customer: user.stripe_id,
+      amount: chargeAmount,
+      currency: 'usd',
+      payment_method: project.stripe_payment_method_id,
+      metadata: { project_id: project.id },
+      off_session: true,
+      confirm: true,
+    });
+    logger.info(`PaymentIntent created ${project.id} (${project.charge_flow_status})`);
+  } catch (err) {
+    logger.info(`Couldn't create PaymentIntent for project ${project.id}`);
+    if (willThrow) throw err;
+  }
 };

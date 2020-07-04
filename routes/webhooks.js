@@ -38,30 +38,27 @@ const stripeEventHandlers = {
     res.sendStatus(200);
   },
 
-  'charge.succeeded': async (req, res) => {
-    const charge = req.body.data.object;
+  'payment_intent.succeeded': async (req, res) => {
+    const paymentIntent = req.body.data.object;
 
-    if (!charge.description || !charge.description.startsWith('project ')) {
-      logger.warn(`Charge ${charge.id} contains invalid description ${charge.description}`);
-      return res.sendStatus(200);
-    }
-
-    const projectId = charge.description.split(' ')[1];
+    const projectId = paymentIntent.metadata.project_id;
     const project = await ProjectModel.findById(projectId);
 
     if (!project) {
-      logger.warn(`Charge ${charge.id} points to not existing project ${projectId}`);
+      logger.warn(`PaymentIntent ${paymentIntent.id} points to not existing project ${projectId}`);
       return res.sendStatus(200);
     }
+
+    if (project.plan !== 'later_plan') return res.sendStatus(200);
 
     const user = await UserModel.findById(project.user_id);
 
     if (!user) {
-      logger.warn(`Charge ${charge.id} points to project ${projectId} with not existing user ${project.user_id}`);
+      logger.warn(`PaymentIntent ${paymentIntent.id} points to project ${projectId} with not existing user ${project.user_id}`);
       return res.sendStatus(200);
     }
 
-    project.debt -= charge.amount;
+    project.debt -= paymentIntent.amount;
     project.last_charge_attempt_at = new Date();
 
     switch (project.charge_flow_status) {
@@ -87,32 +84,29 @@ const stripeEventHandlers = {
         break;
       }
       default: {
-        logger.warn(`Charge ${charge.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
+        logger.warn(`PaymentIntent ${paymentIntent.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
       }
     }
     res.sendStatus(200);
   },
 
-  'charge.failed': async (req, res) => {
-    const charge = req.body.data.object;
+  'payment_intent.payment_failed': async (req, res) => {
+    const paymentIntent = req.body.data.object;
 
-    if (!charge.description || !charge.description.startsWith('project ')) {
-      logger.warn(`Charge ${charge.id} contains invalid description ${charge.description}`);
-      return res.sendStatus(200);
-    }
-
-    const projectId = charge.description.split(' ')[1];
+    const projectId = paymentIntent.metadata.project_id;
     const project = await ProjectModel.findById(projectId);
 
     if (!project) {
-      logger.warn(`Charge ${charge.id} points to not existing project ${projectId}`);
+      logger.warn(`PaymentIntent ${paymentIntent.id} points to not existing project ${projectId}`);
       return res.sendStatus(200);
     }
+
+    if (project.plan !== 'later_plan') return res.sendStatus(200);
 
     const user = await UserModel.findById(project.user_id);
 
     if (!user) {
-      logger.warn(`Charge ${charge.id} points to project ${projectId} with not existing user ${project.user_id}`);
+      logger.warn(`PaymentIntent ${paymentIntent.id} points to project ${projectId} with not existing user ${project.user_id}`);
       return res.sendStatus(200);
     }
 
@@ -122,24 +116,24 @@ const stripeEventHandlers = {
       case ('/1'): {
         project.charge_flow_status = '/2';
         await project.save();
-        logger.info(`/1 charge for project ${projectId} failed`);
+        logger.info(`/1 PaymentIntent for project ${projectId} failed`);
         await chargeForProject(project, user);
         break;
       }
       case ('/2'): {
         project.charge_flow_status = '/4';
         await project.save();
-        logger.info(`/2 charge for project ${projectId} failed`);
+        logger.info(`/2 PaymentIntent for project ${projectId} failed`);
         await chargeForProject(project, user);
         break;
       }
       case ('/4'): {
         await project.save();
-        logger.info(`/4 charge for project ${projectId} failed`);
+        logger.info(`/4 PaymentIntent for project ${projectId} failed`);
         break;
       }
       default: {
-        logger.warn(`Charge ${charge.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
+        logger.warn(`PaymentIntent ${paymentIntent.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
       }
     }
     res.sendStatus(200);

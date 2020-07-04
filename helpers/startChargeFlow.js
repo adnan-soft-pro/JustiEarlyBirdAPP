@@ -21,7 +21,7 @@ module.exports = async (project, user = null) => {
     project.charge_flow_status = '/1';
     await project.save();
 
-    await chargeForProject(project, user);
+    await chargeForProject(project, user, true);
 
     logger.info(`Started charge flow for project ${project.id}`);
     return true;
