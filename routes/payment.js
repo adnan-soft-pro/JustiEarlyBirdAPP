@@ -29,7 +29,9 @@ router.post('/:project_id/now_plan', async (req, res, next) => {
     }
 
     const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    if (paymentMethod.customer !== user.stripe_id) {
+    if (!paymentMethod.customer) {
+      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
+    } else if (paymentMethod.customer !== user.stripe_id) {
       return res.status(400).send('This payment_method doesn\'t belong to the current user');
     }
 
@@ -74,7 +76,15 @@ router.post('/:project_id/later_plan', async (req, res, next) => {
     }
 
     const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    if (paymentMethod.customer !== user.stripe_id) {
+    if (!paymentMethod.customer) {
+      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
+      await stripe.setupIntents.create({
+        confirm: true,
+        customer: user.stripe_id,
+        usage: 'off_session',
+        payment_method: paymentMethodId,
+      });
+    } else if (paymentMethod.customer !== user.stripe_id) {
       return res.status(400).send('This payment_method doesn\'t belong to the current user');
     }
 
