@@ -50,7 +50,7 @@ router.post('/:project_id/now_plan', async (req, res, next) => {
     // Update the project
     project.stripe_subscription_id = subscription.id;
     project.plan = 'now_plan';
-    project.is_active = true;
+    project.is_payment_active = true;
 
     res.send(await project.save());
   } catch (err) {
@@ -78,7 +78,7 @@ router.post('/:project_id/later_plan', async (req, res, next) => {
       return res.status(400).send('This payment_method doesn\'t belong to the current user');
     }
 
-    project.is_active = true;
+    project.is_payment_active = true;
     project.stripe_payment_method_id = paymentMethodId;
     project.plan = 'later_plan';
 
