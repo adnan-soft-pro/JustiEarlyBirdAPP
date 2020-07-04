@@ -7,6 +7,7 @@ const cors = require('cors');
 
 const authMiddleware = require('./middleware/auth');
 // Router
+const auth = require('./routes/auth');
 const users = require('./routes/users');
 const projects = require('./routes/projects');
 const payment = require('./routes/payment');
@@ -45,6 +46,7 @@ db.mongoose.connect(db.url, {
     process.exit();
   });
 app.use('/', index);
+app.use('/auth', auth);
 app.use('/users', authMiddleware, users);
 app.use('/payment', authMiddleware, payment);
 app.use('/projects', authMiddleware, projects);
