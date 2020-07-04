@@ -56,7 +56,7 @@ router.put('/:id', async (req, res, next) => {
     if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
 
     if (!req.body.is_active) await deleteProjectFromDynamo(req.params.id);
-    await project.replaceOne(req.body);
+    await ProjectModel.findByIdAndUpdate(req.params.id, req.body);
 
     res.send(await ProjectModel.findById(req.params.id).exec());
   } catch (err) {
@@ -202,6 +202,8 @@ router.post('/', async (req, res, next) => {
       email,
       password,
       url,
+      run_option,
+      is_active,
       ...extra
     } = req.body;
 
@@ -215,6 +217,8 @@ router.post('/', async (req, res, next) => {
       email,
       password,
       url,
+      run_option: run_option || 1,
+      is_active,
     });
 
     res.send(await project.save());
