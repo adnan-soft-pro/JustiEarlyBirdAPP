@@ -20,7 +20,7 @@ const stripeEventHandlers = {
 
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
-      { is_active: subscription.status === 'active' },
+      { is_payment_active: subscription.status === 'active' },
     ).exec();
 
     res.sendStatus(project ? 200 : 400);
@@ -31,7 +31,7 @@ const stripeEventHandlers = {
 
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
-      { is_active: false, stripe_subscription_id: '' },
+      { is_payment_active: false, stripe_subscription_id: '' },
     ).exec();
 
     if (!project) logger.warn(`Project with subscription:${subscription.id} was not found`);

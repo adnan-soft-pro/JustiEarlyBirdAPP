@@ -124,7 +124,9 @@ router.post('/:id/finish', async (req, res, next) => {
     if (project.finished_at) return res.status(404).send('Project is already finished');
 
     project.finished_at = new Date();
-    project.active = false;
+    project.is_active = false;
+    project.is_payment_active = false;
+
     await project.save();
 
     switch (project.plan) {

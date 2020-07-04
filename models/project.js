@@ -10,6 +10,7 @@ const ProjectSchema = new Schema({
   display_name: { type: String },
   url: { type: String, required: true, unique: true },
   is_active: { type: Boolean, default: false },
+  is_payment_active: { type: Boolean, default: false },
   plan: { type: String, enum: ['now_plan', 'later_plan'] },
   stripe_subscription_id: { type: String },
   stripe_payment_method_id: { type: String },
