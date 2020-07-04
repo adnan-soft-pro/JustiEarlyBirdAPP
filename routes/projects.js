@@ -9,6 +9,7 @@ const config = require('../config/index').app;
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
 const startChargeFlow = require('../helpers/startChargeFlow');
+const RewardModel = require('../models/rewards');
 
 const stripe = require('stripe')(config.stripeSecret);
 
@@ -26,6 +27,8 @@ router.get('/:id', async (req, res, next) => {
 
     const project = await ProjectModel.findById(req.params.id);
     if (!project) return res.status(404).send('Project not found');
+    project._doc.rewards = [];
+    project._doc.rewards = await RewardModel.find({ project_id: req.params.id });
     if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
 
     res.send(project);
@@ -99,6 +102,10 @@ router.get('/', async (req, res, next) => {
   try {
     const { user } = req;
     const projects = await ProjectModel.find({ user_id: user.id });
+    for (let i = 0; i < projects.length; i++) {
+      projects[i]._doc.rewards = [];
+      projects[i]._doc.rewards = await RewardModel.find({ project_id: projects[i]._id });
+    }
     res.send(projects);
   } catch (err) {
     logger.error(err);

@@ -19,6 +19,10 @@ const ProjectSchema = new Schema({
   initial_debt: { type: Number },
   debt: { type: Number },
   last_charge_attempt_at: { type: Date },
+  last_adjusted: { type: Date },
+  total_adjusted: { type: Number },
+  credentials: { type: Boolean },
+  last_check: { type: Date },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');

@@ -11,5 +11,7 @@ module.exports = {
     ecmaVersion: 11,
   },
   rules: {
+    'no-plusplus': 0,
+    'no-await-in-loop': 0,
   },
 };
