@@ -9,7 +9,7 @@ const config = require('../config/index').app;
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const ProjectModel = require('../models/project');
 const startChargeFlow = require('../helpers/startChargeFlow');
-const RewardModel = require('../models/rewards');
+const RewardModel = require('../models/reward');
 
 const stripe = require('stripe')(config.stripeSecret);
 

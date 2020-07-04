@@ -12,6 +12,7 @@ const users = require('./routes/users');
 const projects = require('./routes/projects');
 const payment = require('./routes/payment');
 const webhoks = require('./routes/webhooks');
+const rewards = require('./routes/rewards');
 
 const index = require('./routes/index');
 // App instance
@@ -50,6 +51,7 @@ app.use('/auth', auth);
 app.use('/users', authMiddleware, users);
 app.use('/payment', authMiddleware, payment);
 app.use('/projects', authMiddleware, projects);
+app.use('/rewards', authMiddleware, rewards);
 app.use('/webhooks', webhoks);
 
 // catch 404 and forward to error handler

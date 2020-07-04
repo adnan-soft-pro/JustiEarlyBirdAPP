@@ -34,6 +34,9 @@ const RewardSchema = new Schema({
   limit_stock: {
     type: Number,
   },
+  maximum_sales: {
+    type: Number,
+  },
   is_ended: {
     type: Boolean,
   },
