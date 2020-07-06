@@ -30,18 +30,13 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
       return res.status(400).send('This payment_method doesn\'t belong to the current user');
     }
 
-    // Change the default invoice settings on the customer to the new payment method
-    await stripe.customers.update(
-      user.stripe_id,
-      { invoice_settings: { default_payment_method: paymentMethodId } },
-    );
-
     // Create the subscription
     const subscription = await stripe.subscriptions.create({
       customer: user.stripe_id,
       items: [{ plan: nowPlanId }],
       expand: ['latest_invoice.payment_intent'],
       trial_from_plan: true,
+      default_payment_method: paymentMethodId,
     });
 
     // Update the project
@@ -101,6 +96,70 @@ router.delete('/:project_id/now_plan', exist, ownerOnly, async (req, res) => {
   } catch (err) {
     logger.error(err);
     res.status(500).send(err.reason ? err.reason.message : err.message);
+  }
+});
+
+router.put('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) => {
+  try {
+    const { user, project } = req;
+    const paymentMethodId = req.body.payment_method;
+
+    const reason400 = null
+      || (project.plan !== 'later_plan' && 'Project does\'t have a later_plan')
+      || (!paymentMethodId && 'payment_method is required')
+      || (project.stripe_payment_method_id === paymentMethodId && 'Project already has this PaymentMethod');
+    if (reason400) return res.send(400).send(reason400);
+
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (!paymentMethod.customer) {
+      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
+      await stripe.setupIntents.create({
+        confirm: true,
+        customer: user.stripe_id,
+        usage: 'off_session',
+        payment_method: paymentMethodId,
+      });
+    } else if (paymentMethod.customer !== user.stripe_id) {
+      return res.status(400).send('This payment_method doesn\'t belong to the current user');
+    }
+
+    project.stripe_payment_method_id = paymentMethodId;
+
+    res.send(await project.save());
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+router.put('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
+  try {
+    const { user, project } = req;
+    const paymentMethodId = req.body.payment_method;
+
+    const reason400 = null
+      || (project.plan !== 'now_plan' && 'Project does\'t have a now_plan')
+      || (!paymentMethodId && 'payment_method is required');
+    if (reason400) return res.send(400).send(reason400);
+
+    const subscription = await stripe.subscriptions.retrieve(project.stripe_subscription_id);
+    if (subscription.default_payment_method === paymentMethodId) {
+      return res.send(400).send('Subscription already uses this payment_method');
+    }
+
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (!paymentMethod.customer) {
+      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
+    } else if (paymentMethod.customer !== user.stripe_id) {
+      return res.status(400).send('This payment_method doesn\'t belong to the current user');
+    }
+
+    await stripe.subscriptions.update(subscription.id, { default_payment_method: paymentMethodId });
+
+    res.send(await project.save());
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
   }
 });
 
