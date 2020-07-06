@@ -10,6 +10,7 @@ const stripe = require('stripe')(config.stripeSecret);
 const router = require('express').Router();
 
 const UserModel = require('../models/user');
+const ProjectModel = require('../models/project');
 
 const selfOnly = (req, res, next) => {
   if (req.user.is_admin) return next();
@@ -108,6 +109,16 @@ router.get('/:id/payment_intents', selfOnly, async (req, res, next) => {
         pi.metadata = (await stripe.invoices.retrieve(pi.invoice)).lines.data[0].metadata;
       }
     });
+
+    const rp = {};
+    paymentIntents.related_projects = rp;
+    await mapAsync(paymentIntents.data, async (pi) => {
+      const id = pi.metadata.project_id;
+      if (!id || id in rp) return;
+      rp[id] = ProjectModel.findById(id).exec();
+      rp[id] = await rp[id];
+    });
+
     res.send(paymentIntents);
   } catch (err) {
     logger.error(err);
