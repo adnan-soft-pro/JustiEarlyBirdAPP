@@ -1,29 +1,24 @@
 /* eslint-disable camelcase */
 /* eslint-disable consistent-return */
 /* eslint-disable import/order */
-const cors = require('cors');
-
 const config = require('../config');
 const logger = require('../helpers/logger');
 
 const stripe = require('stripe')(config.app.stripeSecret);
 const router = require('express').Router();
+router.use(require('cors')());
 
-const ProjectModel = require('../models/project');
+const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
-router.use(cors());
+const exist = exist_setIdKey('project_id');
 
 const nowPlanId = 'price_1H08JeA0LXUsJo5CxHH1kWkc';
-router.post('/:project_id/now_plan', async (req, res, next) => {
+router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { user } = req;
-    const projectId = req.params.project_id;
+    const { user, project } = req;
     const paymentMethodId = req.body.payment_method;
 
     if (!paymentMethodId) return res.status(400).send('payment_method is required');
-    const project = await ProjectModel.findById(projectId).exec();
-    if (!project) return res.status(404).send('Project Not Found');
-    if (project.user_id !== user.id) return res.status(400).send('Project Doesn\'t Belong To This User');
     if (project.stripe_subscription_id || project.stripe_payment_method_id) {
       return res.status(400).send('Project Already Has a Subscription or a Payment Method');
     }
@@ -61,16 +56,12 @@ router.post('/:project_id/now_plan', async (req, res, next) => {
   }
 });
 
-router.post('/:project_id/later_plan', async (req, res, next) => {
+router.post('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { user } = req;
-    const projectId = req.params.project_id;
+    const { user, project } = req;
     const paymentMethodId = req.body.payment_method;
 
     if (!paymentMethodId) return res.status(400).send('payment_method is required');
-    const project = await ProjectModel.findById(projectId).exec();
-    if (!project) return res.status(404).send('Project Not Found');
-    if (project.user_id !== user.id) return res.status(400).send('Project Doesn\'t Belong To This User');
     if (project.stripe_subscription_id || project.stripe_payment_method_id) {
       return res.status(400).send('Project Already Has a Subscription or a Payment Method');
     }
@@ -99,15 +90,10 @@ router.post('/:project_id/later_plan', async (req, res, next) => {
   }
 });
 
-router.delete('/:project_id/now_plan', async (req, res) => {
+router.delete('/:project_id/now_plan', exist, ownerOnly, async (req, res) => {
   try {
-    const { user } = req;
-    const projectId = req.params.project_id;
+    const { project } = req;
 
-    // Retrieve project to ensure that it exists and hasn't a subscription yet
-    const project = await ProjectModel.findById(projectId).exec();
-    if (!project) return res.status(404).send('Project Not Found');
-    if (project.user_id !== user.id) return res.status(400).send('Project Doesn\'t Belong To This User');
     if (!project.stripe_subscription_id) return res.status(400).send('Project Has No Subscription');
 
     // Cancel the subscription (Webhook will handle the rest of the logic)

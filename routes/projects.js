@@ -7,8 +7,13 @@ const logger = require('../helpers/logger');
 const config = require('../config/index').app;
 
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
-const ProjectModel = require('../models/project');
 const startChargeFlow = require('../helpers/startChargeFlow');
+
+const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
+
+const exist = exist_setIdKey('id');
+
+const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
 
 const stripe = require('stripe')(config.stripeSecret);
@@ -21,15 +26,10 @@ const stripe = require('stripe')(config.stripeSecret);
  * @param  {string}   id
  * @return {object}  project
  */
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { user } = req;
-
-    const project = await ProjectModel.findById(req.params.id);
-    if (!project) return res.status(404).send('Project not found');
-    project._doc.rewards = [];
-    project._doc.rewards = await RewardModel.find({ project_id: req.params.id });
-    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
+    const { project } = req;
+    project._doc.rewards = await RewardModel.find({ id: project.id });
 
     res.send(project);
   } catch (err) {
@@ -47,14 +47,8 @@ router.get('/:id', async (req, res, next) => {
  * @body   {object}  project
  * @return {object}  project
  */
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { user } = req;
-
-    const project = await ProjectModel.findById(req.params.id);
-    if (!project) return res.status(404).send('Project not found');
-    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
-
     if (!req.body.is_active) await deleteProjectFromDynamo(req.params.id);
     await ProjectModel.findByIdAndUpdate(req.params.id, req.body);
 
@@ -73,16 +67,10 @@ router.put('/:id', async (req, res, next) => {
  * @param  {string}   id
  * @return {string}  message
  */
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { user } = req;
-
-    const project = await ProjectModel.findById(req.params.id);
-    if (!project) return res.status(404).send('Project not found');
-    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
-
     await deleteProjectFromDynamo(req.params.id);
-    await project.deleteOne();
+    await req.project.deleteOne();
 
     res.send({ message: 'Project successfully deleted' }).status(200);
   } catch (err) {
@@ -115,12 +103,10 @@ router.get('/', async (req, res, next) => {
 
 const oneDay = 24 * 60 * 60 * 1000;
 const laterPlanPerDay = 20 * 100;
-router.post('/:id/finish', async (req, res, next) => {
+router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { user } = req;
-    const project = await ProjectModel.findById(req.params.id);
-    if (!project) return res.status(404).send('Project not found');
-    if (project.user_id !== user.id) return res.status(400).send('Project Doesn\'t Belong To This User');
+    const { project } = req;
+
     if (project.finished_at) return res.status(404).send('Project is already finished');
 
     project.finished_at = new Date();
@@ -162,14 +148,9 @@ router.post('/:id/finish', async (req, res, next) => {
   }
 });
 
-router.post('/:id/pay', async (req, res, next) => {
+router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { user } = req;
-
-    const project = await ProjectModel.findById(req.params.id);
-
-    if (!project) return res.status(404).send('Project not found');
-    if (project.user_id !== user.id) return res.status(403).send('Project Doesn\'t Belong To This User');
+    const { project } = req;
 
     if (project.plan !== 'later_plan') return res.status(400).send('Project doesn\'t use LaterPlan');
     if (!project.finished_at) return res.status(400).send('Project is not finished yet');
