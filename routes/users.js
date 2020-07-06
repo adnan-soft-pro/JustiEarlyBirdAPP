@@ -3,6 +3,7 @@
 /* eslint-disable consistent-return */
 /* eslint-disable no-underscore-dangle */
 const logger = require('../helpers/logger');
+const { mapAsync } = require('../helpers/mapAsync');
 const config = require('../config').app;
 
 const stripe = require('stripe')(config.stripeSecret);
@@ -100,7 +101,14 @@ router.get('/:id/payment_intents', selfOnly, async (req, res, next) => {
       stripeReqBody.customer = user.stripe_id;
     }
 
-    res.send(await stripe.paymentIntents.list(stripeReqBody));
+    const paymentIntents = await stripe.paymentIntents.list(stripeReqBody);
+    await mapAsync(paymentIntents.data, async (pi) => {
+      if (pi.description === 'Subscription update') {
+        // eslint-disable-next-line no-param-reassign
+        pi.metadata = (await stripe.invoices.retrieve(pi.invoice)).lines.data[0].metadata;
+      }
+    });
+    res.send(paymentIntents);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

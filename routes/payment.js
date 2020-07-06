@@ -12,7 +12,7 @@ const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
 const exist = exist_setIdKey('project_id');
 
-const nowPlanId = 'price_1H08JeA0LXUsJo5CxHH1kWkc';
+const nowPlanId = 'price_1H1xAbCjtqMrYRFfJJLLJNJz';
 router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
@@ -37,6 +37,7 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
       expand: ['latest_invoice.payment_intent'],
       trial_from_plan: true,
       default_payment_method: paymentMethodId,
+      metadata: { project_id: project.id },
     });
 
     // Update the project
