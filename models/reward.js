@@ -40,6 +40,14 @@ const RewardSchema = new Schema({
   is_ended: {
     type: Boolean,
   },
+  enable_top_up: {
+    type: Boolean,
+    default: false,
+  },
+  enable_limit_sales: {
+    type: Boolean,
+    default: false,
+  },
 }, {
   timestamps: true,
 });
