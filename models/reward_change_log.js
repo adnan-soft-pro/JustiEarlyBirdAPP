@@ -18,7 +18,7 @@ const RewardChangeLogSchema = new Schema({
   log: {
     type: String,
   },
-  isUpdated: {
+  is_updated: {
     type: Boolean,
     required: true,
   },
