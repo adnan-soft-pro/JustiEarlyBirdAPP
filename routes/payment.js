@@ -164,4 +164,16 @@ router.put('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
   }
 });
 
+router.get('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
+  try {
+    if (req.project.plan !== 'now_plan') return res.status(400).send("Project doesn't have a now_plan");
+    const subscription = await stripe.subscriptions.retrieve(req.project.stripe_subscription_id, { expand: ['default_payment_method'] });
+    subscription.invoices = await stripe.invoices.list({ subscription: subscription.id });
+    return res.send(subscription);
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
 module.exports = router;
