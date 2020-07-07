@@ -7,6 +7,7 @@ const logger = require('../helpers/logger');
 
 const RewardModel = require('../models/reward');
 const ProjectModel = require('../models/project');
+const RewardChangeLogModel = require('../models/reward_change_log');
 
 router.put('/:id', async (req, res, next) => {
   try {
@@ -23,6 +24,14 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) {
     logger.error(err);
     next(new Error(err));
+  }
+});
+
+router.get('/:id/logs', async (req, res) => {
+  try {
+    res.send(await RewardChangeLogModel.find({ reward_id: res.params.id }).exec());
+  } catch {
+    res.sendStatus(500);
   }
 });
 

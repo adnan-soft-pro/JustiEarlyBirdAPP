@@ -15,6 +15,7 @@ const exist = exist_setIdKey('id');
 
 const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
+const RewardChangeLogModel = require('../models/reward_change_log');
 
 const stripe = require('stripe')(config.stripeSecret);
 
@@ -161,6 +162,14 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
   } catch (err) {
     logger.error(err);
     next(new Error(err));
+  }
+});
+
+router.get('/:id/logs', exist, ownerOnly, async (req, res) => {
+  try {
+    res.send(await RewardChangeLogModel.find({ project_id: res.params.id }).exec());
+  } catch {
+    res.sendStatus(500);
   }
 });
 
