@@ -167,7 +167,7 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
 
 router.get('/:id/logs', exist, ownerOnly, async (req, res) => {
   try {
-    res.send(await RewardChangeLogModel.find({ project_id: res.params.id }).exec());
+    res.send(await RewardChangeLogModel.find({ project_id: req.params.id }).exec());
   } catch {
     res.sendStatus(500);
   }

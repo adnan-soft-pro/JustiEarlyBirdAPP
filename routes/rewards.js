@@ -29,7 +29,7 @@ router.put('/:id', async (req, res, next) => {
 
 router.get('/:id/logs', async (req, res) => {
   try {
-    res.send(await RewardChangeLogModel.find({ reward_id: res.params.id }).exec());
+    res.send(await RewardChangeLogModel.find({ reward_id: req.params.id }).exec());
   } catch {
     res.sendStatus(500);
   }
