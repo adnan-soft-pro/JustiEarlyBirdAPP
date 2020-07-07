@@ -129,7 +129,7 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
 
       case ('later_plan'): {
         const daysInUse = Math.floor((project.finished_at - project.createdAt) / oneDay);
-        const initialDebt = (daysInUse - 3) * laterPlanPerDay;
+        const initialDebt = (daysInUse - 3 - project.days_in_pause) * laterPlanPerDay;
         project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
         project.debt = initialDebt <= 0 ? 0 : initialDebt;
         project.charge_flow_status = initialDebt <= 0 ? 'not_needed' : 'scheduled';
@@ -171,9 +171,6 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
     if (project.is_payment_active) {
       return res.status(400).send('Project already active');
     }
-    console.log(await await stripe.subscriptions.retrieve(
-      project.stripe_subscription_id,
-    ));
     switch (project.plan) {
       case ('later_plan'): {
         project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
