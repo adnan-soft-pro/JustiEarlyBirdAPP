@@ -17,10 +17,9 @@ const stripeEventHandlers = {
 
   'customer.subscription.updated': async (req, res) => {
     const subscription = req.body.data.object;
-
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
-      { is_payment_active: subscription.status === 'active' },
+      { is_payment_active: subscription.status === 'active' && !subscription.pause_collection },
     ).exec();
 
     res.sendStatus(project ? 200 : 400);

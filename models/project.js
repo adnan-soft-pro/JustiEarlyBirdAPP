@@ -15,6 +15,8 @@ const ProjectSchema = new Schema({
   stripe_subscription_id: { type: String },
   stripe_payment_method_id: { type: String },
   finished_at: { type: Date },
+  last_paused_at: { type: Date },
+  days_in_pause: { type: Number, default: 0 },
   run_option: { type: Number, default: 1 },
   charge_flow_status: { type: String, enum: ['not_needed', 'scheduled', '/1', '/2', '/4', 'done'] },
   initial_debt: { type: Number },

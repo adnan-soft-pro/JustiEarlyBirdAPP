@@ -165,6 +165,69 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
+router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
+  try {
+    const { project } = req;
+    if (project.is_payment_active) {
+      return res.status(400).send('Project already active');
+    }
+    console.log(await await stripe.subscriptions.retrieve(
+      project.stripe_subscription_id,
+    ));
+    switch (project.plan) {
+      case ('later_plan'): {
+        project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
+        project.is_payment_active = true;
+        break;
+      }
+      case ('now_plan'): {
+        await stripe.subscriptions.update(
+          project.stripe_subscription_id,
+          { pause_collection: '' },
+        );
+        break;
+      }
+      default: {
+        return res.status(400).send(`Project has incorrect plan ${project.plan}`);
+      }
+    }
+    res.send(await project.save());
+  } catch (err) {
+    logger.error(err);
+    next(err);
+  }
+});
+
+router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
+  try {
+    const { project } = req;
+    if (!project.is_payment_active) {
+      return res.status(400).send('Project already inactive');
+    }
+
+    switch (project.plan) {
+      case ('later_plan'): {
+        project.last_paused_at = new Date();
+        project.is_payment_active = false;
+        break;
+      }
+      case ('now_plan'): {
+        await stripe.subscriptions.update(
+          project.stripe_subscription_id,
+          { pause_collection: { behavior: 'void' } },
+        );
+        break;
+      }
+      default: {
+        return res.status(400).send(`Project has incorrect plan ${project.plan}`);
+      }
+    }
+    res.send(await project.save());
+  } catch (err) {
+    next(new Error(err));
+  }
+});
+
 router.get('/:id/logs', exist, ownerOnly, async (req, res) => {
   try {
     res.send(await RewardChangeLogModel.find({ project_id: req.params.id }).exec());
