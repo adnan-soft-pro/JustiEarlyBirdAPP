@@ -3,6 +3,7 @@
 /* eslint-disable import/order */
 const config = require('../config');
 const logger = require('../helpers/logger');
+const { mapAsyncInSlices } = require('../helpers/mapAsync');
 
 const stripe = require('stripe')(config.app.stripeSecret);
 const router = require('express').Router();
@@ -168,8 +169,41 @@ router.get('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
   try {
     if (req.project.plan !== 'now_plan') return res.status(400).send("Project doesn't have a now_plan");
     const subscription = await stripe.subscriptions.retrieve(req.project.stripe_subscription_id, { expand: ['default_payment_method'] });
-    subscription.invoices = await stripe.invoices.list({ subscription: subscription.id });
+    const { data: invoices } = await stripe.invoices.list({ subscription: subscription.id });
+
+    subscription.payment_intents = await mapAsyncInSlices(
+      invoices, 10,
+      (i) => stripe.paymentIntents.retrieve(i.payment_intent).catch(() => null),
+    );
+
+    subscription.payment_intents = subscription.payment_intents.filter((pi) => pi);
+
     return res.send(subscription);
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+router.get('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) => {
+  try {
+    const { project } = req;
+    if (project.plan !== 'later_plan') return res.status(400).send("Project doesn't have a later_plan");
+
+    const response = { payment_intents: { object: 'list' } };
+
+    response.default_payment_method = await stripe.paymentMethods
+      .retrieve(project.stripe_payment_method_id)
+      .catch(() => null);
+
+    response.payment_intents.data = await mapAsyncInSlices(
+      project.payment_intent_ids, 10,
+      (piid) => stripe.paymentIntents.retrieve(piid).catch(() => null),
+    );
+
+    response.payment_intents.data = response.payment_intents.data.filter((pi) => pi);
+
+    return res.send(response);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

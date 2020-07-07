@@ -138,6 +138,23 @@ const stripeEventHandlers = {
     }
     res.sendStatus(200);
   },
+
+  'payment_intent.created': async (req, res) => {
+    try {
+      const paymentIntent = req.body.data.object;
+      const projectId = paymentIntent.metadata.project_id;
+      if (!projectId) return res.sendStatus(200);
+
+      const result = await ProjectModel.findByIdAndUpdate(
+        projectId,
+        { $push: { payment_intent_ids: paymentIntent.id } },
+      );
+      if (!result) throw new Error(`Project ${projectId} not found`);
+    } catch (err) {
+      logger.error(err);
+      res.sendStatus(200);
+    }
+  },
 };
 
 router.post('/stripe', async (req, res) => {

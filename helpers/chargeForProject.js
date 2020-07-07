@@ -28,9 +28,12 @@ module.exports = async (project, user = null, willThrow = false) => {
       amount: chargeAmount,
       currency: 'usd',
       payment_method: project.stripe_payment_method_id,
-      metadata: { project_id: project.id },
       off_session: true,
       confirm: true,
+      metadata: {
+        project_id: project.id,
+        charge_flow_status: project.charge_flow_status,
+      },
     });
     logger.info(`PaymentIntent created ${project.id} (${project.charge_flow_status})`);
   } catch (err) {

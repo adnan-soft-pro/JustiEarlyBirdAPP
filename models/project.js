@@ -24,6 +24,7 @@ const ProjectSchema = new Schema({
   total_adjusted: { type: Number },
   credentials: { type: Boolean },
   last_check: { type: Date },
+  payment_intent_ids: { type: [String] },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');
