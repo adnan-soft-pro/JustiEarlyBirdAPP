@@ -5,10 +5,14 @@
  * Module dependencies.
  */
 const http = require('http');
+const https = require('https');
 const debug = require('debug')('nodepad:server');
+const fs = require('fs');
 const app = require('../app');
 const initSockets = require('../sockets');
 
+const key = fs.readFileSync(process.env.PRIV_KEY_PATH);
+const cert = fs.readFileSync(process.env.CERTS_PATH);
 /**
  * Get port from environment and store in Express.
  */
@@ -29,14 +33,13 @@ function normalizePort(val) {
   return false;
 }
 
-const port = normalizePort(process.env.PORT || '3000');
-app.set('port', port);
+const httpPort = normalizePort(process.env.HTTP_PORT || '8000');
 
 /**
  * Create HTTP server.
  */
 
-const server = http.createServer(app);
+const httpServer = http.createServer(app);
 
 /**
  * Event listener for HTTP server "error" event.
@@ -47,9 +50,9 @@ function onError(error) {
     throw error;
   }
 
-  const bind = typeof port === 'string'
-    ? `Pipe ${port}`
-    : `Port ${port}`;
+  const bind = typeof httpPort === 'string'
+    ? `Pipe ${httpPort}`
+    : `Port ${httpPort}`;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {
@@ -71,18 +74,42 @@ function onError(error) {
  */
 
 function onListening() {
-  const addr = server.address();
+  const addr = httpServer.address();
   const bind = typeof addr === 'string'
     ? `pipe ${addr}`
     : `port ${addr.port}`;
   debug(`Listening on ${bind}`);
-  console.log(`Listening on port ${addr.port}`);
+  console.log(`HTTP server listening on port ${addr.port}`);
 }
+
 
 /**
  * Listen on provided port, on all network interfaces.
  */
-initSockets(server);
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+initSockets(httpServer);
+httpServer.listen(httpPort);
+httpServer.on('error', onError);
+httpServer.on('listening', onListening);
+
+
+if (process.env.HTTPS) {
+  const httpsPort = normalizePort(process.env.HTTPS_PORT || '8080');
+  const httpsServer = https.createServer({ key, cert }, app);
+
+  // eslint-disable-next-line no-inner-declarations
+  function onListeningHttps() {
+    const addr = httpsServer.address();
+    const bind = typeof addr === 'string'
+      ? `pipe ${addr}`
+      : `port ${addr.port}`;
+    debug(`Listening on ${bind}`);
+    console.log(`HTTPS server listening on port ${addr.port}`);
+  }
+
+  initSockets(httpsServer);
+  httpsServer.listen(httpsPort);
+  httpsServer.on('error', onError);
+  httpsServer.on('listening', onListeningHttps);
+}
+
+
