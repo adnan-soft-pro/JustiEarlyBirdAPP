@@ -4,6 +4,7 @@
 /* eslint-disable consistent-return */
 const router = require('express').Router();
 const logger = require('../helpers/logger');
+const { mapAsync } = require('../helpers/mapAsync');
 const config = require('../config/index').app;
 
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
@@ -29,8 +30,8 @@ const stripe = require('stripe')(config.stripeSecret);
  */
 router.get('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
-    const { project } = req;
-    project._doc.rewards = await RewardModel.find({ id: project.id });
+    const project = req.project._doc;
+    project.rewards = await RewardModel.find({ project_id: project._id });
 
     res.send(project);
   } catch (err) {
@@ -90,11 +91,14 @@ router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const { user } = req;
-    const projects = await ProjectModel.find({ user_id: user.id });
-    for (let i = 0; i < projects.length; i++) {
-      projects[i]._doc.rewards = [];
-      projects[i]._doc.rewards = await RewardModel.find({ project_id: projects[i]._id });
-    }
+    let projects = await ProjectModel.find({ user_id: user.id });
+    projects = projects.map((project) => project._doc);
+
+    await mapAsync(projects, async (project) => {
+      // eslint-disable-next-line no-param-reassign
+      project.rewards = await RewardModel.find({ project_id: project._id });
+    });
+
     res.send(projects);
   } catch (err) {
     logger.error(err);
