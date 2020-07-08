@@ -16,7 +16,7 @@ const handleSubscription = async (socket, data) => {
     return socket.emit('subscribe-error', { msg: `Reward ${rewardId} not found` });
   }
 
-  socket.join(data.objectId);
+  socket.join(rewardId);
   return socket.emit('subscribe-success', { rewardId });
 };
 
