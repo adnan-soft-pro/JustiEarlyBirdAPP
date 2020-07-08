@@ -225,11 +225,13 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
-router.get('/:id/logs', exist, ownerOnly, async (req, res) => {
+router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
   try {
-    res.send(await RewardChangeLogModel.find({ project_id: req.params.id }).exec());
-  } catch {
-    res.sendStatus(500);
+    const { project } = req;
+    const changeLogs = await RewardChangeLogModel.find({ project_id: project.id }).exec();
+    res.send(changeLogs);
+  } catch (err) {
+    next(new Error(err));
   }
 });
 
