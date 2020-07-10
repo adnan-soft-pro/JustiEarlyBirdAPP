@@ -20,7 +20,11 @@ router.get('/:id', exist, projectOwnerOnly, async (req, res, next) => {
 router.get('/:id/logs', exist, projectOwnerOnly, async (req, res, next) => {
   try {
     const { reward } = req;
-    const changeLogs = await RewardChangeLogModel.find({ reward_id: reward.id }).exec();
+    const changeLogs = await RewardChangeLogModel
+      .find({ reward_id: reward.id })
+      .sort({ createdAt: -1 })
+      .exec();
+
     res.send(changeLogs);
   } catch (err) {
     logger.error(err);
@@ -32,7 +36,8 @@ router.put('/:id', exist, projectOwnerOnly, async (req, res, next) => {
   try {
     const { reward } = req;
     await RewardModel.findByIdAndUpdate(reward.id, req.body);
-    return res.send(await RewardModel.findById(reward.id));
+
+    res.send(await RewardModel.findById(reward.id));
   } catch (err) {
     logger.error(err);
     next(new Error(err));

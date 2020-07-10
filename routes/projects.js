@@ -232,7 +232,11 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
 router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
-    const changeLogs = await RewardChangeLogModel.find({ project_id: project.id }).exec();
+    const changeLogs = await RewardChangeLogModel
+      .find({ project_id: project.id })
+      .sort({ createdAt: -1 })
+      .exec();
+
     res.send(changeLogs);
   } catch (err) {
     next(new Error(err));
