@@ -31,7 +31,6 @@ router.post('/register', async (req, res, next) => {
     user.password = req.body.password;
     user = await user.save();
 
-    user = await user.save();
     const customer = await stripe.customers.create({ email: user.email });
     user.stripe_id = customer.id;
     user = await user.save();
@@ -85,22 +84,31 @@ router.post('/login', async (req, res, next) => {
    */
 router.post('/login/social', async (req, res, next) => {
   try {
-    const userData = await axios.get(req.body.social === 'google' ? `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${req.body.token}`
-      : `https://graph.facebook.com/me?access_token=${req.body.token}&fields=email,name`);
-    let exsistUser = await UserModel.findOne({ email: userData.data.email });
-    if (!exsistUser) {
-      const user = new UserModel();
+    const socialUrls = {
+      google: `https://www.googleapis.com/oauth2/v1/userinfo?access_token=${req.body.token}`,
+      facebook: `https://graph.facebook.com/me?access_token=${req.body.token}&fields=email,name`,
+    };
+
+    const userData = await axios.get(socialUrls[req.body.social]);
+    let user = await UserModel.findOne({ email: userData.data.email });
+
+    if (!user) {
+      user = new UserModel();
       user.email = userData.data.email;
       user.fullname = userData.data.name;
-      exsistUser = await user.save();
+
+      const customer = await stripe.customers.create({ email: user.email });
+      user.stripe_id = customer.id;
+
+      user = await user.save();
     }
 
     const object = {
-      _id: exsistUser._id,
-      email: exsistUser.email,
+      _id: user._id,
+      email: user.email,
     };
     const token = jwt.sign(object, config.jwtSecret);
-    res.header('authorization', `Bearer ${token}`).send(exsistUser);
+    res.header('authorization', `Bearer ${token}`).send(user);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
