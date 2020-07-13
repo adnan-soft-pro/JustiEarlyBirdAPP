@@ -14,6 +14,7 @@ const ProjectSchema = new Schema({
   plan: { type: String, enum: ['now_plan', 'later_plan'] },
   stripe_subscription_id: { type: String },
   stripe_payment_method_id: { type: String },
+  payment_configured_at: { type: Date },
   finished_at: { type: Date },
   last_paused_at: { type: Date },
   days_in_pause: { type: Number, default: 0 },

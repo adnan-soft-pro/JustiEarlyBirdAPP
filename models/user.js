@@ -7,18 +7,12 @@ const bcrypt = require('bcrypt');
 const { Schema } = mongoose;
 
 const UserSchema = new Schema({
-  fullname: String,
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  password: {
-    type: String,
-  },
-  stripe_id: String,
-  is_admin: Boolean,
-  location: String,
+  fullname: { type: String },
+  email: { type: String, required: true, unique: true },
+  password: { type: String },
+  stripe_id: { type: String },
+  is_admin: { type: Boolean },
+  location: { type: String },
 }, {
   timestamps: true,
 });

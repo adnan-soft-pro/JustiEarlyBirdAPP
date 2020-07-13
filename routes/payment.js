@@ -45,6 +45,7 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
     project.stripe_subscription_id = subscription.id;
     project.plan = 'now_plan';
     project.is_payment_active = true;
+    project.payment_configured_at = new Date();
 
     res.send(await project.save());
   } catch (err) {
@@ -79,6 +80,7 @@ router.post('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) 
     project.is_payment_active = true;
     project.stripe_payment_method_id = paymentMethodId;
     project.plan = 'later_plan';
+    project.payment_configured_at = new Date();
 
     res.send(await project.save());
   } catch (err) {

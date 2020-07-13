@@ -132,7 +132,8 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       }
 
       case ('later_plan'): {
-        const daysInUse = Math.floor((project.finished_at - project.createdAt) / oneDay);
+        // eslint-disable-next-line max-len
+        const daysInUse = Math.floor((project.finished_at - project.payment_configured_at) / oneDay);
         const initialDebt = (daysInUse - 3 - project.days_in_pause) * laterPlanPerDay;
         project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
         project.debt = initialDebt <= 0 ? 0 : initialDebt;
