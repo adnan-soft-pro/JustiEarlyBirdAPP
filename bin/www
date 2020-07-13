@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
-
 /**
  * Module dependencies.
  */
@@ -10,50 +9,36 @@ const debug = require('debug')('nodepad:server');
 const fs = require('fs');
 const app = require('../app');
 const initSockets = require('../sockets');
-
-const key = fs.readFileSync(process.env.PRIV_KEY_PATH);
-const cert = fs.readFileSync(process.env.CERTS_PATH);
 /**
  * Get port from environment and store in Express.
  */
-
 function normalizePort(val) {
   const port = parseInt(val, 10);
-
   if (Number.isNaN(port)) {
     // named pipe
     return val;
   }
-
   if (port >= 0) {
     // port number
     return port;
   }
-
   return false;
 }
-
 const httpPort = normalizePort(process.env.HTTP_PORT || '8000');
-
 /**
  * Create HTTP server.
  */
-
 const httpServer = http.createServer(app);
-
 /**
  * Event listener for HTTP server "error" event.
  */
-
 function onError(error) {
   if (error.syscall !== 'listen') {
     throw error;
   }
-
   const bind = typeof httpPort === 'string'
     ? `Pipe ${httpPort}`
     : `Port ${httpPort}`;
-
   // handle specific listen errors with friendly messages
   switch (error.code) {
     case 'EACCES':
@@ -68,11 +53,9 @@ function onError(error) {
       throw error;
   }
 }
-
 /**
  * Event listener for HTTP server "listening" event.
  */
-
 function onListening() {
   const addr = httpServer.address();
   const bind = typeof addr === 'string'
@@ -81,8 +64,6 @@ function onListening() {
   debug(`Listening on ${bind}`);
   console.log(`HTTP server listening on port ${addr.port}`);
 }
-
-
 /**
  * Listen on provided port, on all network interfaces.
  */
@@ -90,12 +71,11 @@ initSockets(httpServer);
 httpServer.listen(httpPort);
 httpServer.on('error', onError);
 httpServer.on('listening', onListening);
-
-
 if (process.env.HTTPS) {
+  const key = fs.readFileSync(process.env.PRIV_KEY_PATH);
+  const cert = fs.readFileSync(process.env.CERTS_PATH);
   const httpsPort = normalizePort(process.env.HTTPS_PORT || '8080');
   const httpsServer = https.createServer({ key, cert }, app);
-
   // eslint-disable-next-line no-inner-declarations
   function onListeningHttps() {
     const addr = httpsServer.address();
@@ -105,11 +85,8 @@ if (process.env.HTTPS) {
     debug(`Listening on ${bind}`);
     console.log(`HTTPS server listening on port ${addr.port}`);
   }
-
   initSockets(httpsServer);
   httpsServer.listen(httpsPort);
   httpsServer.on('error', onError);
   httpsServer.on('listening', onListeningHttps);
 }
-
-
