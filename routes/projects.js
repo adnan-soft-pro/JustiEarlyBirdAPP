@@ -173,13 +173,13 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
 router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
-    if (project.is_payment_active) {
+    if (project.is_active) {
       return res.status(400).send('Project already active');
     }
+
     switch (project.plan) {
       case ('later_plan'): {
         project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
-        project.is_payment_active = true;
         break;
       }
       case ('now_plan'): {
@@ -193,6 +193,8 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
         return res.status(400).send(`Project has incorrect plan ${project.plan}`);
       }
     }
+
+    project.is_active = true;
     res.send(await project.save());
   } catch (err) {
     logger.error(err);
@@ -203,14 +205,13 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
 router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
-    if (!project.is_payment_active) {
+    if (!project.is_active) {
       return res.status(400).send('Project already inactive');
     }
 
     switch (project.plan) {
       case ('later_plan'): {
         project.last_paused_at = new Date();
-        project.is_payment_active = false;
         break;
       }
       case ('now_plan'): {
@@ -224,6 +225,8 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
         return res.status(400).send(`Project has incorrect plan ${project.plan}`);
       }
     }
+
+    project.is_active = false;
     res.send(await project.save());
   } catch (err) {
     next(new Error(err));
