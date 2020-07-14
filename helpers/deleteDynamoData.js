@@ -20,15 +20,23 @@ const updateData = async (item, type, id) => {
       UpdateExpression: `SET ${type === 'check' ? 'check_project_ids = :i' : 'upd_project_ids = :i'}`,
     };
     if (type === 'check') {
+      const index = item.check_project_ids.SS.indexOf(id);
+      if (index > -1) {
+        item.check_project_ids.SS.splice(index, 1);
+      }
       updateParams.ExpressionAttributeValues = {
         ':i': {
-          SS: item.check_project_ids.SS.splice(item.check_project_ids.SS.indexOf(id, 1)),
+          SS: item.check_project_ids.SS,
         },
       };
     } else {
+      const index = item.upd_project_ids.SS.indexOf(id);
+      if (index > -1) {
+        item.upd_project_ids.SS.splice(index, 1);
+      }
       updateParams.ExpressionAttributeValues = {
         ':i': {
-          SS: item.upd_project_ids.SS.splice(item.upd_project_ids.SS.indexOf(id, 1)),
+          SS: item.upd_project_ids.SS,
         },
       };
     }
