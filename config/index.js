@@ -9,5 +9,6 @@ module.exports = {
   },
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',
+    dynamoDBName: process.env.DYNAMO_DB || 'test_db',
   },
 };

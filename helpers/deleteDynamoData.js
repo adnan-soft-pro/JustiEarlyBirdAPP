@@ -16,7 +16,7 @@ const updateData = async (item, type, id) => {
         },
       },
       ReturnValues: 'ALL_NEW',
-      TableName: 'test_db',
+      TableName: awsConfig.dynamoDBName,
       UpdateExpression: `SET ${type === 'check' ? 'check_project_ids = :i' : 'upd_project_ids = :i'}`,
     };
     if (type === 'check') {
@@ -59,7 +59,7 @@ const deleteProject = async (id) => {
           ],
         },
       },
-      TableName: 'test_db',
+      TableName: awsConfig.dynamoDBName,
     };
 
     const checkRecord = await dynamoDB.scan(paramsCheck).promise();
@@ -76,7 +76,7 @@ const deleteProject = async (id) => {
           ],
         },
       },
-      TableName: 'test_db',
+      TableName: awsConfig.dynamoDBName,
     };
 
     const updateRecord = await dynamoDB.scan(paramsUpdate).promise();
