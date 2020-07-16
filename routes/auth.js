@@ -55,10 +55,10 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await UserModel.findOne({ email });
-    if (!user) return res.status(403).send('User is not found');
+    if (!user) return res.status(404).send('User is not found');
 
     const check = await bcrypt.compare(password, user.password);
-    if (!check) return res.status(403).send('Invalid password');
+    if (!check) return res.status(401).send('Invalid password');
 
     const object = {
       _id: user._id,
