@@ -13,6 +13,7 @@ const UserSchema = new Schema({
   stripe_id: { type: String },
   is_admin: { type: Boolean },
   location: { type: String },
+  timezone: { type: String },
 }, {
   timestamps: true,
 });
