@@ -237,12 +237,24 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
 router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
-    const countLogs = await RewardChangeLogModel.find({ project_id: project.id }).count();
-    const { page, limit } = req.query;
+    const { page, limit, showLogs } = req.query;
+
+    const isUpdatedFilters = {
+      Adjusted: true,
+      Checked: false,
+      All: { $in: [false, true] },
+    };
+
+    const countLogs = await RewardChangeLogModel
+      .find({ project_id: project.id, is_updated: isUpdatedFilters[showLogs] })
+      .count()
+      .exec();
+
     const changeLogs = await RewardChangeLogModel
-      .find({ project_id: project.id })
+      .find({ project_id: project.id, is_updated: isUpdatedFilters[showLogs] })
       .sort({ createdAt: -1 })
-      .skip((+page - 1) * (+limit)).limit(+limit)
+      .skip((+page - 1) * (+limit))
+      .limit(+limit)
       .exec();
 
     res.send({ changeLogs, countLogs });
