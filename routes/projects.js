@@ -6,6 +6,7 @@ const router = require('express').Router();
 const logger = require('../helpers/logger');
 const { mapAsync } = require('../helpers/mapAsync');
 const config = require('../config/index').app;
+const normalizeUrl = require('normalize-url');
 
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const startChargeFlow = require('../helpers/startChargeFlow');
@@ -278,13 +279,20 @@ router.post('/', async (req, res, next) => {
     if (Object.keys(extra).length) {
       return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
     }
+    const normalizedUrl = normalizeUrl(url, { stripProtocol: true, stripHash: true, stripWWW: true }).match(/^(.+\/projects\/[^/]+)/g)[0];
+    const existingProject = await ProjectModel.findOne({ url: { $regex: normalizedUrl } });
+
+    if (existingProject) {
+      res.status(400);
+      return next(new Error('This project was already added by a different account, please contact our support team'));
+    }
 
     const project = new ProjectModel({
       user_id: user.id,
       site_type,
       email,
       password,
-      url,
+      url: normalizeUrl(url, { forceHttps: true, stripHash: true }),
       run_option: run_option || 1,
       is_active,
     });
