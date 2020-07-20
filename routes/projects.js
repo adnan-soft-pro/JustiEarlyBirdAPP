@@ -262,7 +262,6 @@ router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     const { user } = req;
-
     const {
       site_type,
       email,
@@ -290,7 +289,7 @@ router.post('/', async (req, res, next) => {
     res.send(await project.save());
   } catch (err) {
     logger.error(err);
-    next(new Error(err));
+    next(new Error("This project was already added by a different account, please contact our support team"));
   }
 });
 
