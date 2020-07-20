@@ -1,6 +1,7 @@
 /* eslint-disable global-require */
 const socketGroups = {
   reward: require('./rewards'),
+  project: require('./projects'),
 };
 
 module.exports = (server) => {

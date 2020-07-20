@@ -236,15 +236,15 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
 router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
-    const countLogs = await RewardChangeLogModel.find({ project_id: project.id }).count()
-    const { page, limit } = req.query
+    const countLogs = await RewardChangeLogModel.find({ project_id: project.id }).count();
+    const { page, limit } = req.query;
     const changeLogs = await RewardChangeLogModel
       .find({ project_id: project.id })
       .sort({ createdAt: -1 })
-      .skip( (+page - 1) * (+limit)).limit(+limit)
+      .skip((+page - 1) * (+limit)).limit(+limit)
       .exec();
 
-    res.send({changeLogs, countLogs});
+    res.send({ changeLogs, countLogs });
   } catch (err) {
     next(new Error(err));
   }
@@ -292,7 +292,7 @@ router.post('/', async (req, res, next) => {
     res.send(await project.save());
   } catch (err) {
     logger.error(err);
-    next(new Error("This project was already added by a different account, please contact our support team"));
+    next(new Error('This project was already added by a different account, please contact our support team'));
   }
 });
 
