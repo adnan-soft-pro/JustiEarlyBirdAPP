@@ -236,12 +236,15 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
 router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
+    const countLogs = await RewardChangeLogModel.find({ project_id: project.id }).count()
+    const { page, limit } = req.query
     const changeLogs = await RewardChangeLogModel
       .find({ project_id: project.id })
       .sort({ createdAt: -1 })
+      .skip( (+page - 1) * (+limit)).limit(+limit)
       .exec();
 
-    res.send(changeLogs);
+    res.send({changeLogs, countLogs});
   } catch (err) {
     next(new Error(err));
   }
