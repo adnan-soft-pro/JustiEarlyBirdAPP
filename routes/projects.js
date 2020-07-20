@@ -58,7 +58,7 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
     res.send(await ProjectModel.findById(req.params.id).exec());
   } catch (err) {
     logger.error(err);
-    next(new Error(err));
+    next(new Error('This project was already added by a different account, please contact our support team'));
   }
 });
 
