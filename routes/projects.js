@@ -291,12 +291,22 @@ router.post('/', async (req, res, next) => {
     if (Object.keys(extra).length) {
       return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
     }
-    const normalizedUrl = normalizeUrl(url, { stripProtocol: true, stripHash: true, stripWWW: true }).match(/^(.+\/projects\/[^/]+)/g)[0];
+    let normalizedUrl;
+    try {
+      [normalizedUrl] = normalizeUrl(url, {
+        stripProtocol: true,
+        stripHash: true,
+        stripWWW: true,
+      }).match(/^(.+\/projects\/[^/]+)/g);
+    } catch (err) {
+      throw new Error('Invalid url');
+    }
+
     const existingProject = await ProjectModel.findOne({ url: { $regex: normalizedUrl } });
 
     if (existingProject) {
       res.status(400);
-      return next(new Error('This project was already added by a different account, please contact our support team'));
+      throw new Error('This project was already added by a different account, please contact our support team');
     }
 
     const project = new ProjectModel({
@@ -312,7 +322,7 @@ router.post('/', async (req, res, next) => {
     res.send(await project.save());
   } catch (err) {
     logger.error(err);
-    next(new Error('This project was already added by a different account, please contact our support team'));
+    next(new Error(err));
   }
 });
 
