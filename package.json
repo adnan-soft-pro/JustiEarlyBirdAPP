@@ -4,8 +4,12 @@
   "description": "Back-end of the JustEarlybird Backend",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon ./bin/www"
+    "start": "nodemon ./bin/www",
+    "eslint": "npx eslint ."
   },
+  "pre-push": [
+    "eslint"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lpcouture/justearlybird-app-backend.git"
@@ -17,11 +21,28 @@
   },
   "homepage": "https://github.com/lpcouture/justearlybird-app-backend#readme",
   "dependencies": {
+    "aws-sdk": "^2.707.0",
+    "axios": "^0.19.2",
+    "bcrypt": "^5.0.0",
     "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "debug": "^4.1.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.9.19",
+    "node-cron": "^2.0.3",
     "nodemon": "^2.0.4",
-    "path": "^0.12.7"
+    "normalize-url": "^5.0.0",
+    "path": "^0.12.7",
+    "socket.io": "^2.3.0",
+    "stripe": "^8.67.0",
+    "uuid": "^8.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.2.0",
+    "eslint-config-airbnb-base": "^14.2.0",
+    "eslint-plugin-import": "^2.21.2",
+    "pre-push": "^0.1.1"
   }
 }
