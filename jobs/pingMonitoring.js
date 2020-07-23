@@ -6,7 +6,7 @@ const serviceName = 'backendApi';
 
 module.exports = async () => {
   try {
-    console.log('^^^ping');
+    logger.debug('ping monitoring');
     await axios.default.post(
       config.monitoringUrl,
       { serviceName },

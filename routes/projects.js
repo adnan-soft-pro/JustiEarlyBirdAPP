@@ -18,7 +18,7 @@ const exist = exist_setIdKey('id');
 const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
 const RewardChangeLogModel = require('../models/reward_change_log');
-
+const axios = require('axios');
 const stripe = require('stripe')(config.stripeSecret);
 
 /**
@@ -54,6 +54,16 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
     if (!req.body.is_active) await deleteProjectFromDynamo(req.params.id);
     await ProjectModel.findByIdAndUpdate(req.params.id, req.body);
+    // if (!result) throw new Error('Project not found');
+
+    // const projectUrl = normalizeUrl(result.url, {
+    //   removeQueryParameters: [/.*/],
+    //   stripHash: true,
+    //   stripProtocol: true,
+    //   stripWWW: true,
+    // });
+    // console.log(req.body);
+    // console.log('projectUrl', projectUrl);
 
     res.send(await ProjectModel.findById(req.params.id).exec());
   } catch (err) {
@@ -291,18 +301,39 @@ router.post('/', async (req, res, next) => {
     if (Object.keys(extra).length) {
       return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
     }
+
     let normalizedUrl;
     try {
-      [normalizedUrl] = normalizeUrl(url, {
-        stripProtocol: true,
+      normalizedUrl = normalizeUrl(url, {
+        removeQueryParameters: [/.*/],
         stripHash: true,
-        stripWWW: true,
-      }).match(/^(.+\/projects\/[^/]+)/g);
+        forceHttps: true,
+      });
     } catch (err) {
       throw new Error('Invalid url');
     }
 
-    const existingProject = await ProjectModel.findOne({ url: { $regex: normalizedUrl } });
+    let result;
+    try {
+      result = await axios.default.get(normalizedUrl);
+    } catch (err) {
+      throw new Error('URL not found');
+    }
+
+    const newUrl = normalizeUrl(result.request.res.responseUrl, {
+      removeQueryParameters: [/.*/],
+      stripHash: true,
+      forceHttps: true,
+    });
+
+    const urlInDB = normalizeUrl(newUrl, {
+      removeQueryParameters: [/.*/],
+      stripHash: true,
+      stripProtocol: true,
+      stripWWW: true,
+    });
+
+    const existingProject = await ProjectModel.findOne({ url: { $regex: urlInDB } });
 
     if (existingProject) {
       res.status(400);
@@ -314,7 +345,7 @@ router.post('/', async (req, res, next) => {
       site_type,
       email,
       password,
-      url: normalizeUrl(url, { forceHttps: true, stripHash: true }),
+      url: newUrl,
       run_option: run_option || 1,
       is_active,
     });
