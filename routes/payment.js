@@ -78,24 +78,6 @@ router.post('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) 
   }
 });
 
-router.delete('/:project_id/now_plan', exist, ownerOnly, async (req, res) => {
-  try {
-    const { project } = req;
-
-    if (!project.stripe_subscription_id) return res.status(400).send('Project Has No Subscription');
-
-    // Cancel the subscription (Webhook will handle the rest of the logic)
-    await stripe.subscriptions.del(project.stripe_subscription_id);
-    return res.send({ subscription_cancelled: true });
-  } catch (err) {
-    logger.error(err);
-    return res.send({
-      subscription_cancelled: false,
-      err: err.reason ? err.reason.message : err.message,
-    });
-  }
-});
-
 router.put('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
