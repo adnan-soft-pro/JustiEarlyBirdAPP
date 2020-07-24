@@ -4,8 +4,9 @@ module.exports = {
   },
   app: {
     port: process.env.PORT || 3000,
-    jwtSecret: process.env.TOKEN_SECRET,
     stripeSecret: process.env.STRIPE_SECRET || '',
+    frontendURL: process.env.FRONTEND_URL || 'http://localhost:3000',
+    jwtSecret: process.env.TOKEN_SECRET,
     monitoringUrl: process.env.MONITORING_URL,
   },
   aws: {
