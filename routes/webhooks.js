@@ -17,6 +17,7 @@ router.use(cors());
 
 const stripeEventHandlers = {
 
+  // On now_plan subscription selection
   'customer.subscription.created': async (req, res) => {
     const subscription = req.body.data.object;
     const projectId = subscription.metadata && subscription.metadata.projectId;
@@ -48,6 +49,7 @@ const stripeEventHandlers = {
     res.sendStatus(200);
   },
 
+  // On now_plan subscription status changes
   'customer.subscription.updated': async (req, res) => {
     const subscription = req.body.data.object;
     const project = await ProjectModel.findOneAndUpdate(
@@ -62,6 +64,7 @@ const stripeEventHandlers = {
     res.sendStatus(200);
   },
 
+  // On now_plan subscription deletion
   'customer.subscription.deleted': async (req, res) => {
     const subscription = req.body.data.object;
 
@@ -77,6 +80,33 @@ const stripeEventHandlers = {
     res.sendStatus(200);
   },
 
+  // On later_plan subscription selection
+  'setup_intent.succeeded': async (req, res) => {
+    const setupIntent = req.body.data.object;
+    const projectId = setupIntent.metadata && setupIntent.metadata.projectId;
+
+    if (!projectId) {
+      logger.warn(`Setup Intent ${setupIntent.id} doesnt have metadata.projectId`);
+      return res.sendStatus(200);
+    }
+
+    const project = await ProjectModel.findById(projectId);
+
+    if (!project) {
+      logger.warn(`Setup Intent ${setupIntent.id} points to unexisting subscription ${projectId}`);
+      return res.sendStatus(200);
+    }
+
+    project.plan = 'later_plan';
+    project.is_payment_active = true;
+    project.payment_configured_at = new Date();
+    project.stripe_payment_method_id = setupIntent.payment_method;
+    await project.save();
+
+    res.sendStatus(200);
+  },
+
+  // On later_plan payment success
   'payment_intent.succeeded': async (req, res) => {
     const paymentIntent = req.body.data.object;
 
@@ -129,6 +159,7 @@ const stripeEventHandlers = {
     res.sendStatus(200);
   },
 
+  // On later_plan payment fail
   'payment_intent.payment_failed': async (req, res) => {
     const paymentIntent = req.body.data.object;
 
