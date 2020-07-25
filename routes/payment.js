@@ -13,7 +13,6 @@ const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
 const exist = exist_setIdKey('project_id');
 
-const nowPlanId = 'price_1Gzk3eCjtqMrYRFfZDdPUR2s';
 router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
@@ -31,7 +30,7 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
       mode: 'subscription',
       customer: user.stripe_id,
       client_reference_id: project.id,
-      line_items: [{ price: nowPlanId, quantity: 1 }],
+      line_items: [{ price: config.nowPlanPriceId, quantity: 1 }],
       subscription_data: {
         trial_from_plan: true,
         metadata: { projectId: project.id },
@@ -128,7 +127,7 @@ router.put('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
       mode: 'subscription',
       customer: user.stripe_id,
       client_reference_id: project.id,
-      line_items: [{ price: nowPlanId, quantity: 1 }],
+      line_items: [{ price: config.nowPlanPriceId, quantity: 1 }],
       subscription_data: {
         metadata: { projectId: project.id },
         trial_end: trialEnd,
