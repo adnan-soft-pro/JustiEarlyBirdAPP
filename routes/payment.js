@@ -147,6 +147,12 @@ router.get('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
     );
 
     subscription.payment_intents = subscription.payment_intents.filter((pi) => pi);
+    subscription.default_payment_method = {
+      created: subscription.default_payment_method.created,
+      card: {
+        last4: subscription.default_payment_method.card.last4,
+      },
+    };
 
     return res.send(subscription);
   } catch (err) {
@@ -165,6 +171,15 @@ router.get('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) =
     response.default_payment_method = await stripe.paymentMethods
       .retrieve(project.stripe_payment_method_id)
       .catch(() => null);
+
+    if (response.default_payment_method) {
+      response.default_payment_method = {
+        created: response.default_payment_method.created,
+        card: {
+          last4: response.default_payment_method.card.last4,
+        },
+      };
+    }
 
     response.payment_intents.data = await mapAsyncInSlices(
       project.payment_intent_ids, 10,
