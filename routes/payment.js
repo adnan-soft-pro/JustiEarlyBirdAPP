@@ -13,7 +13,7 @@ const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
 const exist = exist_setIdKey('project_id');
 
-const nowPlanId = 'price_1H1xAbCjtqMrYRFfJJLLJNJz';
+const nowPlanId = 'price_1Gzk3eCjtqMrYRFfZDdPUR2s';
 router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
