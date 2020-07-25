@@ -83,7 +83,7 @@ router.put('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) =
     const { user, project } = req;
 
     if (project.plan !== 'later_plan') {
-      return res.send(400).send("Project does't have a later_plan");
+      return res.status(400).send("Project does't have a later_plan");
     }
 
     //! Create stripe checkout session in setup mode
