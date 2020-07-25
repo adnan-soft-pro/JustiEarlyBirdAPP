@@ -111,7 +111,15 @@ router.put('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
     const { user, project } = req;
 
     if (project.plan !== 'now_plan') {
-      return res.send(400).send("Project does't have a later_plan");
+      return res.send(400).send("Project does't have a now_plan");
+    }
+
+    let trialEnd;
+    if (!project.stripe_subscription_id) trialEnd = Date.now();
+    else {
+      trialEnd = await stripe.subscriptions.retrieve(project.stripe_subscription_id)
+        .then((subscription) => subscription.trial_end)
+        .catch(() => Date.now());
     }
 
     // ! Create stripe checkout session in subscription mode
@@ -123,6 +131,7 @@ router.put('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
       line_items: [{ price: nowPlanId, quantity: 1 }],
       subscription_data: {
         metadata: { projectId: project.id },
+        trial_end: trialEnd,
       },
       success_url: `${config.frontendURL}/myprojects`,
       cancel_url: `${config.frontendURL}/myprojects`,

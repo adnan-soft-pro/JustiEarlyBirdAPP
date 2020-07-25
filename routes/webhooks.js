@@ -42,7 +42,7 @@ const stripeEventHandlers = {
 
     if (oldSubscription) {
       await stripe.subscriptions.del(oldSubscription).catch(() => null);
-      logger.warn(`Project's ${projectId} subscription ${project.stripe_subscription_id} replaced with ${subscription.id}`);
+      logger.warn(`Project's ${projectId} subscription ${oldSubscription} replaced with ${subscription.id}`);
     }
 
     res.sendStatus(200);
