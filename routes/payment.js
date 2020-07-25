@@ -52,7 +52,7 @@ router.post('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) 
     const { user, project } = req;
 
     const reason400 = null
-      || (project.plan && 'Project already has a plan')
+      || (project.plan && 'Project Already Has a Plan')
       || (project.stripe_subscription_id && 'Project Already Has a Subscription')
       || (project.stripe_payment_method_id && 'Project Already Has a Payment Method');
 
@@ -83,7 +83,7 @@ router.put('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) =
     const { user, project } = req;
 
     if (project.plan !== 'later_plan') {
-      return res.status(400).send("Project does't have a later_plan");
+      return res.status(400).send("Project doesn't have a later_plan");
     }
 
     //! Create stripe checkout session in setup mode

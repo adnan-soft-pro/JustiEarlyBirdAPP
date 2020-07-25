@@ -169,9 +169,12 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
 
-    if (project.plan !== 'later_plan') return res.status(400).send('Project doesn\'t use LaterPlan');
-    if (!project.finished_at) return res.status(400).send('Project is not finished yet');
-    if (project.charge_flow_status !== 'scheduled') return res.status(400).send('Charge flow is already started for this project');
+    const reason400 = null
+      || (project.plan !== 'later_plan' && "Project doesn't have later_plan")
+      || (!project.finished_at && 'Project is not finished yet')
+      || (project.charge_flow_status !== 'scheduled' && 'Charge flow is already started for this project');
+
+    if (reason400) return res.status(400).send(reason400);
 
     const charge_flow_started = await startChargeFlow(project);
     res.send({ charge_flow_started });

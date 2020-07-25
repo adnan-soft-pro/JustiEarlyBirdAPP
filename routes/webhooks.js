@@ -36,7 +36,6 @@ const stripeEventHandlers = {
 
     const oldSubscription = project.stripe_subscription_id;
     project.plan = 'now_plan';
-    project.is_payment_active = true;
     project.payment_configured_at = new Date();
     project.stripe_subscription_id = subscription.id;
     await project.save();
@@ -52,9 +51,10 @@ const stripeEventHandlers = {
   // On now_plan subscription status changes
   'customer.subscription.updated': async (req, res) => {
     const subscription = req.body.data.object;
+
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
-      { is_payment_active: !subscription.pause_collection && subscription.status === 'active' },
+      { is_payment_active: ['active', 'trialing'].includes(subscription.status) },
     );
 
     if (!project) {
