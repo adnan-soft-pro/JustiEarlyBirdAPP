@@ -304,7 +304,6 @@ router.post('/', async (req, res, next) => {
     if (Object.keys(extra).length) {
       return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
     }
-
     let normalizedUrl;
     try {
       normalizedUrl = normalizeUrl(url, {
@@ -335,7 +334,17 @@ router.post('/', async (req, res, next) => {
       stripProtocol: true,
       stripWWW: true,
     });
-
+    if (req.body.site_type === 'KS') {
+      if (!urlInDB.includes('kickstarter.com/projects')) {
+        throw new Error('Wrong URL or Site type');
+      }
+    } else if (req.body.site_type === 'IG') {
+      if (!urlInDB.includes('indiegogo.com/projects')) {
+        throw new Error('Wrong URL or Site type');
+      }
+    } else {
+      throw new Error('Wrong Site type');
+    }
     const existingProject = await ProjectModel.findOne({ url: { $regex: urlInDB } });
 
     if (existingProject) {
@@ -352,7 +361,6 @@ router.post('/', async (req, res, next) => {
       run_option: run_option || 1,
       is_active,
     });
-
     res.send(await project.save());
   } catch (err) {
     logger.error(err);
