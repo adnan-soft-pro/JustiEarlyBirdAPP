@@ -53,17 +53,58 @@ router.get('/:id', exist, ownerOnly, async (req, res, next) => {
 router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
     if (!req.body.is_active) await deleteProjectFromDynamo(req.params.id);
-    await ProjectModel.findByIdAndUpdate(req.params.id, req.body);
-    // if (!result) throw new Error('Project not found');
-
-    // const projectUrl = normalizeUrl(result.url, {
-    //   removeQueryParameters: [/.*/],
-    //   stripHash: true,
-    //   stripProtocol: true,
-    //   stripWWW: true,
-    // });
-    // console.log(req.body);
-    // console.log('projectUrl', projectUrl);
+    // console.log('req.body', req.body);
+    if (req.body.site_type === 'KS') {
+      if (!req.body.url.includes('kickstarter.com/projects')) {
+        throw new Error('Wrong URL or Site type');
+      }
+    } else if (req.body.site_type === 'IG') {
+      if (!req.body.url.includes('indiegogo.com/projects')) {
+        throw new Error('Wrong URL or Site type');
+      }
+    } else {
+      throw new Error('Wrong Site type');
+    }
+    let normalizedUrl;
+    try {
+      normalizedUrl = normalizeUrl(req.body.url, {
+        removeQueryParameters: [/.*/],
+        stripHash: true,
+        forceHttps: true,
+      });
+    } catch (err) {
+      throw new Error('Invalid url');
+    }
+    let result;
+    try {
+      result = await axios.default.get(normalizedUrl);
+    } catch (err) {
+      throw new Error('URL not found');
+    }
+    const newUrl = normalizeUrl(result.request.res.responseUrl, {
+      removeQueryParameters: [/.*/],
+      stripHash: true,
+      forceHttps: true,
+    });
+    const urlInDB = normalizeUrl(newUrl, {
+      removeQueryParameters: [/.*/],
+      stripHash: true,
+      stripProtocol: true,
+      stripWWW: true,
+    });
+    const projectInDb = await ProjectModel
+      .findOne({ _id: req.params.id, url: { $regex: urlInDB } });
+    if (projectInDb) {
+      req.body.url = newUrl;
+      await projectInDb.update(req.body);
+    } else {
+      const existingProject = await ProjectModel.findOne({ url: { $regex: urlInDB } });
+      if (existingProject) {
+        res.status(400);
+        throw new Error('This project was already added by a different account, please contact our support team');
+      }
+      await ProjectModel.findByIdAndUpdate(req.params.id, req.body);
+    }
 
     res.send(await ProjectModel.findById(req.params.id).exec());
   } catch (err) {
