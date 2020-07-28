@@ -6,10 +6,10 @@ const router = require('express').Router();
 const logger = require('../helpers/logger');
 const { mapAsync } = require('../helpers/mapAsync');
 const config = require('../config/index').app;
-const normalizeUrl = require('normalize-url');
 
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const startChargeFlow = require('../helpers/startChargeFlow');
+const validateProjectUrl = require('../helpers/validateProjectUrl');
 
 const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
@@ -18,7 +18,6 @@ const exist = exist_setIdKey('id');
 const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
 const RewardChangeLogModel = require('../models/reward_change_log');
-const axios = require('axios');
 const stripe = require('stripe')(config.stripeSecret);
 
 /**
@@ -47,44 +46,10 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
     const projectUpd = { ...project._doc, ...req.body };
 
     if ((projectUpd.site_type !== project.site_type) || (projectUpd.url !== project.url)) {
-      let platformURL;
-      if (projectUpd.site_type === 'KS') platformURL = 'https://kickstarter.com/projects';
-      else if (projectUpd.site_type === 'IG') platformURL = 'https://indiegogo.com/projects';
-      else return res.status(400).send('Invalid site type');
-
-      const normaliztionRules = {
-        removeTrailingSlash: true,
-        stripWWW: true,
-        stripHash: true,
-        forceHttps: true,
-        removeQueryParameters: [/.*/],
-      };
-
-      let normalizedUrl;
       try {
-        normalizedUrl = normalizeUrl(projectUpd.url, normaliztionRules);
-      } catch {
-        return res.status(400).send('Invalid url');
-      }
-
-      if (!normalizedUrl.startsWith(platformURL)) {
-        return res.status(400).send(`Incorrect URL for the ${projectUpd.site_type} platform`);
-      }
-
-      let projectUrl;
-      try {
-        const { request } = await axios.default.get(normalizedUrl);
-        projectUrl = normalizeUrl(request.res.responseUrl, normaliztionRules);
-        if (!projectUrl.startsWith(platformURL)) throw new Error();
-      } catch {
-        return res.status(400).send("Specified URL doesn't reference a project");
-      }
-
-      const searchUrl = normalizeUrl(projectUrl, { ...normaliztionRules, stripProtocol: true });
-      const existingProject = await ProjectModel.findOne({ url: { $regex: searchUrl } });
-
-      if (existingProject && existingProject.id !== project.id) {
-        return res.status(400).send('This project was already added by a different account, please contact our support team');
+        projectUpd.url = await validateProjectUrl(projectUpd.site_type, projectUpd.url, project.id);
+      } catch (err) {
+        return res.status(400).send(err.message);
       }
     }
 
@@ -303,18 +268,6 @@ router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
-/**
- * Endpoint: /projects/
- * Method: POST
- * @function
- * @name create
- * @body  {string}  site_type
- * @body  {string}  email
- * @body  {string}  password
- * @body  {string}  display_name
- * @body  {string}  url
- * @return {object}  project
- */
 router.post('/', async (req, res, next) => {
   try {
     const { user } = req;
@@ -331,52 +284,12 @@ router.post('/', async (req, res, next) => {
     if (Object.keys(extra).length) {
       return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
     }
-    let normalizedUrl;
+
+    let validUrl;
     try {
-      normalizedUrl = normalizeUrl(url, {
-        removeQueryParameters: [/.*/],
-        stripHash: true,
-        forceHttps: true,
-      });
+      validUrl = await validateProjectUrl(site_type, url);
     } catch (err) {
-      throw new Error('Invalid url');
-    }
-
-    let result;
-    try {
-      result = await axios.default.get(normalizedUrl);
-    } catch (err) {
-      throw new Error('URL not found');
-    }
-
-    const newUrl = normalizeUrl(result.request.res.responseUrl, {
-      removeQueryParameters: [/.*/],
-      stripHash: true,
-      forceHttps: true,
-    });
-
-    const urlInDB = normalizeUrl(newUrl, {
-      removeQueryParameters: [/.*/],
-      stripHash: true,
-      stripProtocol: true,
-      stripWWW: true,
-    });
-    if (req.body.site_type === 'KS') {
-      if (!urlInDB.includes('kickstarter.com/projects')) {
-        throw new Error('Wrong URL or Site type');
-      }
-    } else if (req.body.site_type === 'IG') {
-      if (!urlInDB.includes('indiegogo.com/projects')) {
-        throw new Error('Wrong URL or Site type');
-      }
-    } else {
-      throw new Error('Wrong Site type');
-    }
-    const existingProject = await ProjectModel.findOne({ url: { $regex: urlInDB } });
-
-    if (existingProject) {
-      res.status(400);
-      throw new Error('This project was already added by a different account, please contact our support team');
+      return res.status(400).send(err.message);
     }
 
     const project = new ProjectModel({
@@ -384,10 +297,11 @@ router.post('/', async (req, res, next) => {
       site_type,
       email,
       password,
-      url: newUrl,
+      url: validUrl,
       run_option: run_option || 1,
       is_active,
     });
+
     res.send(await project.save());
   } catch (err) {
     logger.error(err);
