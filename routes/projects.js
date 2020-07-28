@@ -185,7 +185,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
 
     switch (project.plan) {
       case ('later_plan'): {
-        project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
+        project.days_in_pause += Math.floor((new Date() - project.last_paused_at || 0) / oneDay);
         break;
       }
       case ('now_plan'): {
