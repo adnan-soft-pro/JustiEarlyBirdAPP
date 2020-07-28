@@ -48,6 +48,12 @@ const RewardSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  last_checked: {
+    type: Date,
+  },
+  last_adjusted: {
+    type: Date,
+  },
 }, {
   timestamps: true,
 });
