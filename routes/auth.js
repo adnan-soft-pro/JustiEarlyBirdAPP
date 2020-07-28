@@ -25,8 +25,12 @@ const router = express.Router();
  */
 router.post('/register', async (req, res, next) => {
   try {
+    const insensitiveEmail = new RegExp(['^', req.body.email.toLowerCase(), '$'].join(''), 'i');
+    const exsistingUser = await UserModel.findOne({ insensitiveEmail });
+    if (exsistingUser) return res.status(404).send('User with same email is already exsits ');
+
     let user = new UserModel();
-    user.email = req.body.email;
+    user.email = req.body.email.toLowerCase();
     user.fullname = req.body.fullname;
     user.password = req.body.password;
     user = await user.save();
@@ -53,7 +57,8 @@ router.post('/register', async (req, res, next) => {
    */
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = new RegExp(['^', req.body.email.toLowerCase(), '$'].join(''), 'i');
     const user = await UserModel.findOne({ email });
     if (!user) return res.status(404).send('User is not found');
 
