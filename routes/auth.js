@@ -57,9 +57,9 @@ router.post('/register', async (req, res, next) => {
    */
 router.post('/login', async (req, res, next) => {
   try {
-    const { password } = req.body;
-    const email = new RegExp(['^', req.body.email.toLowerCase(), '$'].join(''), 'i');
-    const user = await UserModel.findOne({ email });
+    const { password, email } = req.body;
+
+    const user = await UserModel.findOne({ email: new RegExp(`^${email}$`, 'i') });
     if (!user) return res.status(404).send('User is not found');
 
     const check = await bcrypt.compare(password, user.password);
