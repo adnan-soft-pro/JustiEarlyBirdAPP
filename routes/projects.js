@@ -41,75 +41,61 @@ router.get('/:id', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
-/**
- * Endpoint: /projects/:id
- * Method: PUT
- * @function
- * @name UpateProject
- * @param  {string}   id
- * @body   {object}  project
- * @return {object}  project
- */
 router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
-    if (!req.body.is_active) await deleteProjectFromDynamo(req.params.id);
-    // console.log('req.body', req.body);
-    if (req.body.site_type === 'KS') {
-      if (!req.body.url.includes('kickstarter.com/projects')) {
-        throw new Error('Wrong URL or Site type');
-      }
-    } else if (req.body.site_type === 'IG') {
-      if (!req.body.url.includes('indiegogo.com/projects')) {
-        throw new Error('Wrong URL or Site type');
-      }
-    } else {
-      throw new Error('Wrong Site type');
-    }
-    let normalizedUrl;
-    try {
-      normalizedUrl = normalizeUrl(req.body.url, {
-        removeQueryParameters: [/.*/],
+    const { project } = req;
+    const projectUpd = { ...project._doc, ...req.body };
+
+    if ((projectUpd.site_type !== project.site_type) || (projectUpd.url !== project.url)) {
+      let platformURL;
+      if (projectUpd.site_type === 'KS') platformURL = 'https://kickstarter.com/projects';
+      else if (projectUpd.site_type === 'IG') platformURL = 'https://indiegogo.com/projects';
+      else return res.status(400).send('Invalid site type');
+
+      const normaliztionRules = {
+        removeTrailingSlash: true,
+        stripWWW: true,
         stripHash: true,
         forceHttps: true,
-      });
-    } catch (err) {
-      throw new Error('Invalid url');
-    }
-    let result;
-    try {
-      result = await axios.default.get(normalizedUrl);
-    } catch (err) {
-      throw new Error('URL not found');
-    }
-    const newUrl = normalizeUrl(result.request.res.responseUrl, {
-      removeQueryParameters: [/.*/],
-      stripHash: true,
-      forceHttps: true,
-    });
-    const urlInDB = normalizeUrl(newUrl, {
-      removeQueryParameters: [/.*/],
-      stripHash: true,
-      stripProtocol: true,
-      stripWWW: true,
-    });
-    const projectInDb = await ProjectModel
-      .findOne({ _id: req.params.id, url: { $regex: urlInDB } });
-    if (projectInDb) {
-      req.body.url = newUrl;
-      await projectInDb.update(req.body);
-    } else {
-      const existingProject = await ProjectModel.findOne({ url: { $regex: urlInDB } });
-      if (existingProject) {
-        res.status(400);
-        throw new Error('This project was already added by a different account, please contact our support team');
+        removeQueryParameters: [/.*/],
+      };
+
+      let normalizedUrl;
+      try {
+        normalizedUrl = normalizeUrl(projectUpd.url, normaliztionRules);
+      } catch {
+        return res.status(400).send('Invalid url');
       }
-      await ProjectModel.findByIdAndUpdate(req.params.id, req.body);
+
+      if (!normalizedUrl.startsWith(platformURL)) {
+        return res.status(400).send(`Incorrect URL for the ${projectUpd.site_type} platform`);
+      }
+
+      let projectUrl;
+      try {
+        const { request } = await axios.default.get(normalizedUrl);
+        projectUrl = normalizeUrl(request.res.responseUrl, normaliztionRules);
+        if (!projectUrl.startsWith(platformURL)) throw new Error();
+      } catch {
+        return res.status(400).send("Specified URL doesn't reference a project");
+      }
+
+      const searchUrl = normalizeUrl(projectUrl, { ...normaliztionRules, stripProtocol: true });
+      const existingProject = await ProjectModel.findOne({ url: { $regex: searchUrl } });
+
+      if (existingProject && existingProject.id !== project.id) {
+        return res.status(400).send('This project was already added by a different account, please contact our support team');
+      }
     }
 
-    res.send(await ProjectModel.findById(req.params.id).exec());
+    if (project.is_active && project.is_active !== projectUpd.is_active) {
+      await deleteProjectFromDynamo(project.id).catch(() => {});
+    }
+
+    res.send(await ProjectModel.findByIdAndUpdate(project.id, projectUpd, { new: true }));
   } catch (err) {
     logger.error(err);
-    next(new Error('This project was already added by a different account, please contact our support team'));
+    next(new Error(err));
   }
 });
 
