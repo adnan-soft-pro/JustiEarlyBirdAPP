@@ -14,6 +14,7 @@ const UserSchema = new Schema({
   is_admin: { type: Boolean },
   location: { type: String },
   timezone: { type: String },
+  is_suspended: { type: Boolean, default: false },
 
 }, {
   timestamps: true,

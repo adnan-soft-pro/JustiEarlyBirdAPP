@@ -29,6 +29,7 @@ const ProjectSchema = new Schema({
   credentials: { type: Boolean },
   last_check: { type: Date },
   payment_intent_ids: { type: [String] },
+  is_suspended: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');
