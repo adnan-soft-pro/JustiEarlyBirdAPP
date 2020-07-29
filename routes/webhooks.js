@@ -38,6 +38,7 @@ const stripeEventHandlers = {
     project.plan = 'now_plan';
     project.payment_configured_at = new Date();
     project.stripe_subscription_id = subscription.id;
+    project.finished_at = undefined;
     await project.save();
 
     if (oldSubscription) {
@@ -101,6 +102,7 @@ const stripeEventHandlers = {
     project.is_payment_active = true;
     project.payment_configured_at = new Date();
     project.stripe_payment_method_id = setupIntent.payment_method;
+    project.finished_at = undefined;
     await project.save();
 
     res.sendStatus(200);

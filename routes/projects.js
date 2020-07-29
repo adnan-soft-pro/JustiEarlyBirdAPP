@@ -141,6 +141,10 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
         project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
         project.debt = initialDebt <= 0 ? 0 : initialDebt;
         project.charge_flow_status = initialDebt <= 0 ? 'not_needed' : 'scheduled';
+        if (initialDebt <= 0) {
+          project.plan = undefined;
+          project.stripe_payment_method_id = undefined;
+        }
         await project.save();
         break;
       }
