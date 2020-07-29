@@ -38,6 +38,7 @@ const stripeEventHandlers = {
     project.plan = 'now_plan';
     project.payment_configured_at = new Date();
     project.stripe_subscription_id = subscription.id;
+    project.finished_at = undefined;
     await project.save();
 
     if (oldSubscription) {
@@ -70,7 +71,7 @@ const stripeEventHandlers = {
 
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
-      { is_payment_active: false, stripe_subscription_id: '' },
+      { is_payment_active: false, stripe_subscription_id: '', plan: '' },
     );
 
     if (!project) {
@@ -101,6 +102,7 @@ const stripeEventHandlers = {
     project.is_payment_active = true;
     project.payment_configured_at = new Date();
     project.stripe_payment_method_id = setupIntent.payment_method;
+    project.finished_at = undefined;
     await project.save();
 
     res.sendStatus(200);
@@ -133,6 +135,8 @@ const stripeEventHandlers = {
     switch (project.charge_flow_status) {
       case ('/1'): {
         project.charge_flow_status = 'done';
+        project.stripe_payment_method_id = '';
+        project.plan = '';
         await project.save();
         logger.info(`Project ${projectId} is fully paid (/1)`);
         break;
@@ -147,6 +151,8 @@ const stripeEventHandlers = {
       case ('/4'): {
         if (project.debt === 0) {
           project.charge_flow_status = 'done';
+          project.stripe_payment_method_id = '';
+          project.plan = '';
         }
         await project.save();
         logger.info(`Project ${projectId} is ${project.debt === 0 ? 'fully' : 'partially'} paid (/4)`);

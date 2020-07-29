@@ -25,21 +25,34 @@ const router = express.Router();
  */
 router.post('/register', async (req, res, next) => {
   try {
-    const insensitiveEmail = new RegExp(['^', req.body.email.toLowerCase(), '$'].join(''), 'i');
-    const exsistingUser = await UserModel.findOne({ insensitiveEmail });
-    if (exsistingUser) return res.status(404).send('User with same email is already exsits ');
+    const {
+      email: _email,
+      password,
+      fullname,
+      ...extra
+    } = req.body;
 
-    let user = new UserModel();
-    user.email = req.body.email.toLowerCase();
-    user.fullname = req.body.fullname;
-    user.password = req.body.password;
-    user = await user.save();
+    const email = _email.toLowerCase();
 
-    const customer = await stripe.customers.create({ email: user.email });
-    user.stripe_id = customer.id;
-    user = await user.save();
+    if (Object.keys(extra).length) {
+      return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
+    }
 
-    res.send(user);
+    const exsistingUser = await UserModel.findOne({ email: new RegExp(`^${email}$`, 'i') });
+    if (exsistingUser) {
+      return res.status(400).send('The user with this email address is already registered');
+    }
+
+    const customer = await stripe.customers.create({ email });
+
+    const user = new UserModel({
+      email,
+      fullname,
+      password,
+      stripe_id: customer.id,
+    });
+
+    res.send(await user.save());
   } catch (err) {
     logger.error(err);
     next(new Error(err));
