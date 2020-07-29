@@ -20,12 +20,28 @@ router.get('/:id', exist, projectOwnerOnly, async (req, res, next) => {
 router.get('/:id/logs', exist, projectOwnerOnly, async (req, res, next) => {
   try {
     const { reward } = req;
-    const changeLogs = await RewardChangeLogModel
-      .find({ reward_id: reward.id })
-      .sort({ createdAt: -1 })
+    const {
+      page, limit, showLogs, projectId,
+    } = req.query;
+    const isUpdatedFilters = {
+      Adjusted: true,
+      Checked: false,
+      All: { $in: [false, true] },
+    };
+
+    const countLogs = await RewardChangeLogModel
+      .find({ reward_id: reward.id, is_updated: isUpdatedFilters[showLogs], project_id: projectId })
+      .count()
       .exec();
 
-    res.send(changeLogs);
+    const changeLogs = await RewardChangeLogModel
+      .find({ reward_id: reward.id, is_updated: isUpdatedFilters[showLogs], project_id: projectId })
+      .sort({ createdAt: -1 })
+      .skip((+page - 1) * (+limit))
+      .limit(+limit)
+      .exec();
+
+    res.send({ changeLogs, countLogs });
   } catch (err) {
     logger.error(err);
     next(new Error(err));

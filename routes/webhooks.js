@@ -3,9 +3,11 @@
 /* eslint-disable import/order */
 const cors = require('cors');
 
+const config = require('../config').app;
 const logger = require('../helpers/logger');
 const chargeForProject = require('../helpers/chargeForProject');
 
+const stripe = require('stripe')(config.stripeSecret);
 const router = require('express').Router();
 
 const ProjectModel = require('../models/project');
@@ -15,28 +17,96 @@ router.use(cors());
 
 const stripeEventHandlers = {
 
-  'customer.subscription.updated': async (req, res) => {
+  // On now_plan subscription selection
+  'customer.subscription.created': async (req, res) => {
     const subscription = req.body.data.object;
-    const project = await ProjectModel.findOneAndUpdate(
-      { stripe_subscription_id: subscription.id },
-      { is_payment_active: subscription.status === 'active' && !subscription.pause_collection },
-    ).exec();
+    const projectId = subscription.metadata && subscription.metadata.projectId;
 
-    res.sendStatus(project ? 200 : 400);
+    if (!projectId) {
+      logger.warn(`Subscription ${subscription.id} doesnt have metadata.projectId`);
+      return res.sendStatus(200);
+    }
+
+    const project = await ProjectModel.findById(projectId);
+
+    if (!project) {
+      logger.warn(`Subscription ${subscription.id} points to unexisting subscription ${projectId}`);
+      return res.sendStatus(200);
+    }
+
+    const oldSubscription = project.stripe_subscription_id;
+    project.plan = 'now_plan';
+    project.payment_configured_at = new Date();
+    project.stripe_subscription_id = subscription.id;
+    await project.save();
+
+    if (oldSubscription) {
+      await stripe.subscriptions.del(oldSubscription).catch(() => null);
+      logger.warn(`Project's ${projectId} subscription ${oldSubscription} replaced with ${subscription.id}`);
+    }
+
+    res.sendStatus(200);
   },
 
+  // On now_plan subscription status changes
+  'customer.subscription.updated': async (req, res) => {
+    const subscription = req.body.data.object;
+
+    const project = await ProjectModel.findOneAndUpdate(
+      { stripe_subscription_id: subscription.id },
+      { is_payment_active: ['active', 'trialing'].includes(subscription.status) },
+    );
+
+    if (!project) {
+      logger.warn(`Project with subscription ${subscription.id} was not found`);
+    }
+
+    res.sendStatus(200);
+  },
+
+  // On now_plan subscription deletion
   'customer.subscription.deleted': async (req, res) => {
     const subscription = req.body.data.object;
 
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
       { is_payment_active: false, stripe_subscription_id: '' },
-    ).exec();
+    );
 
-    if (!project) logger.warn(`Project with subscription:${subscription.id} was not found`);
+    if (!project) {
+      logger.warn(`Project with subscription ${subscription.id} was not found`);
+    }
+
     res.sendStatus(200);
   },
 
+  // On later_plan subscription selection
+  'setup_intent.succeeded': async (req, res) => {
+    const setupIntent = req.body.data.object;
+    const projectId = setupIntent.metadata && setupIntent.metadata.projectId;
+
+    if (!projectId) {
+      logger.warn(`Setup Intent ${setupIntent.id} doesnt have metadata.projectId`);
+      return res.sendStatus(200);
+    }
+
+    const project = await ProjectModel.findById(projectId);
+
+    if (!project) {
+      logger.warn(`Setup Intent ${setupIntent.id} points to unexisting subscription ${projectId}`);
+      return res.sendStatus(200);
+    }
+
+    project.plan = 'later_plan';
+    project.is_payment_active = true;
+    project.payment_configured_at = new Date();
+    project.stripe_payment_method_id = setupIntent.payment_method;
+    await project.save();
+
+    res.sendStatus(200);
+  },
+
+  // On later_plan payment success
   'payment_intent.succeeded': async (req, res) => {
     const paymentIntent = req.body.data.object;
 
@@ -89,6 +159,7 @@ const stripeEventHandlers = {
     res.sendStatus(200);
   },
 
+  // On later_plan payment fail
   'payment_intent.payment_failed': async (req, res) => {
     const paymentIntent = req.body.data.object;
 

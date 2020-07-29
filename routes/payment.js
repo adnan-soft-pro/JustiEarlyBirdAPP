@@ -1,11 +1,11 @@
 /* eslint-disable camelcase */
 /* eslint-disable consistent-return */
 /* eslint-disable import/order */
-const config = require('../config');
+const config = require('../config').app;
 const logger = require('../helpers/logger');
 const { mapAsyncInSlices } = require('../helpers/mapAsync');
 
-const stripe = require('stripe')(config.app.stripeSecret);
+const stripe = require('stripe')(config.stripeSecret);
 const router = require('express').Router();
 router.use(require('cors')());
 
@@ -13,41 +13,33 @@ const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
 const exist = exist_setIdKey('project_id');
 
-const nowPlanId = 'price_1Gzk3eCjtqMrYRFfZDdPUR2s';
 router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
-    const paymentMethodId = req.body.payment_method;
 
-    if (!paymentMethodId) return res.status(400).send('payment_method is required');
-    if (project.stripe_subscription_id || project.stripe_payment_method_id) {
-      return res.status(400).send('Project Already Has a Subscription or a Payment Method');
-    }
+    const reason400 = null
+      || (project.plan && 'Project already has a plan')
+      || (project.stripe_subscription_id && 'Project Already Has a Subscription')
+      || (project.stripe_payment_method_id && 'Project Already Has a Payment Method');
 
-    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    if (!paymentMethod.customer) {
-      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
-    } else if (paymentMethod.customer !== user.stripe_id) {
-      return res.status(400).send('This payment_method doesn\'t belong to the current user');
-    }
+    if (reason400) return res.status(400).send(reason400);
 
-    // Create the subscription
-    const subscription = await stripe.subscriptions.create({
+    // ! Create stripe checkout session in subscription mode
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
       customer: user.stripe_id,
-      items: [{ plan: nowPlanId }],
-      expand: ['latest_invoice.payment_intent'],
-      trial_from_plan: true,
-      default_payment_method: paymentMethodId,
-      metadata: { project_id: project.id },
+      client_reference_id: project.id,
+      line_items: [{ price: config.nowPlanPriceId, quantity: 1 }],
+      subscription_data: {
+        trial_from_plan: true,
+        metadata: { projectId: project.id },
+      },
+      success_url: `${config.frontendURL}/myprojects`,
+      cancel_url: `${config.frontendURL}/myprojects`,
     });
 
-    // Update the project
-    project.stripe_subscription_id = subscription.id;
-    project.plan = 'now_plan';
-    project.is_payment_active = true;
-    project.payment_configured_at = new Date();
-
-    res.send(await project.save());
+    res.send({ sessionId: session.id });
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -57,83 +49,56 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
 router.post('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
-    const paymentMethodId = req.body.payment_method;
 
-    if (!paymentMethodId) return res.status(400).send('payment_method is required');
-    if (project.stripe_subscription_id || project.stripe_payment_method_id) {
-      return res.status(400).send('Project Already Has a Subscription or a Payment Method');
-    }
+    const reason400 = null
+      || (project.plan && 'Project Already Has a Plan')
+      || (project.stripe_subscription_id && 'Project Already Has a Subscription')
+      || (project.stripe_payment_method_id && 'Project Already Has a Payment Method');
 
-    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    if (!paymentMethod.customer) {
-      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
-      await stripe.setupIntents.create({
-        confirm: true,
-        customer: user.stripe_id,
-        usage: 'off_session',
-        payment_method: paymentMethodId,
-      });
-    } else if (paymentMethod.customer !== user.stripe_id) {
-      return res.status(400).send('This payment_method doesn\'t belong to the current user');
-    }
+    if (reason400) return res.status(400).send(reason400);
 
-    project.is_payment_active = true;
-    project.stripe_payment_method_id = paymentMethodId;
-    project.plan = 'later_plan';
-    project.payment_configured_at = new Date();
+    //! Create stripe checkout session in setup mode
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'setup',
+      customer: user.stripe_id,
+      client_reference_id: project.id,
+      setup_intent_data: {
+        metadata: { projectId: project.id },
+      },
+      success_url: `${config.frontendURL}/myprojects`,
+      cancel_url: `${config.frontendURL}/myprojects`,
+    });
 
-    res.send(await project.save());
+    res.send({ sessionId: session.id });
   } catch (err) {
     logger.error(err);
     next(new Error(err));
   }
 });
 
-router.delete('/:project_id/now_plan', exist, ownerOnly, async (req, res) => {
-  try {
-    const { project } = req;
-
-    if (!project.stripe_subscription_id) return res.status(400).send('Project Has No Subscription');
-
-    // Cancel the subscription (Webhook will handle the rest of the logic)
-    await stripe.subscriptions.del(project.stripe_subscription_id);
-    return res.send({ subscription_cancelled: true });
-  } catch (err) {
-    logger.error(err);
-    return res.send({
-      subscription_cancelled: false,
-      err: err.reason ? err.reason.message : err.message,
-    });
-  }
-});
-
 router.put('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
-    const paymentMethodId = req.body.payment_method;
 
-    const reason400 = null
-      || (project.plan !== 'later_plan' && 'Project does\'t have a later_plan')
-      || (!paymentMethodId && 'payment_method is required')
-      || (project.stripe_payment_method_id === paymentMethodId && 'Project already has this PaymentMethod');
-    if (reason400) return res.send(400).send(reason400);
-
-    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    if (!paymentMethod.customer) {
-      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
-      await stripe.setupIntents.create({
-        confirm: true,
-        customer: user.stripe_id,
-        usage: 'off_session',
-        payment_method: paymentMethodId,
-      });
-    } else if (paymentMethod.customer !== user.stripe_id) {
-      return res.status(400).send('This payment_method doesn\'t belong to the current user');
+    if (project.plan !== 'later_plan') {
+      return res.status(400).send("Project doesn't have a later_plan");
     }
 
-    project.stripe_payment_method_id = paymentMethodId;
+    //! Create stripe checkout session in setup mode
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'setup',
+      customer: user.stripe_id,
+      client_reference_id: project.id,
+      setup_intent_data: {
+        metadata: { projectId: project.id },
+      },
+      success_url: `${config.frontendURL}/myprojects`,
+      cancel_url: `${config.frontendURL}/myprojects`,
+    });
 
-    res.send(await project.save());
+    res.send({ sessionId: session.id });
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -143,28 +108,35 @@ router.put('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) =
 router.put('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => {
   try {
     const { user, project } = req;
-    const paymentMethodId = req.body.payment_method;
 
-    const reason400 = null
-      || (project.plan !== 'now_plan' && 'Project does\'t have a now_plan')
-      || (!paymentMethodId && 'payment_method is required');
-    if (reason400) return res.send(400).send(reason400);
-
-    const subscription = await stripe.subscriptions.retrieve(project.stripe_subscription_id);
-    if (subscription.default_payment_method === paymentMethodId) {
-      return res.send(400).send('Subscription already uses this payment_method');
+    if (project.plan !== 'now_plan') {
+      return res.send(400).send("Project does't have a now_plan");
     }
 
-    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    if (!paymentMethod.customer) {
-      await stripe.paymentMethods.attach(paymentMethodId, { customer: user.stripe_id });
-    } else if (paymentMethod.customer !== user.stripe_id) {
-      return res.status(400).send('This payment_method doesn\'t belong to the current user');
+    let trialEnd;
+    if (!project.stripe_subscription_id) trialEnd = Date.now();
+    else {
+      trialEnd = await stripe.subscriptions.retrieve(project.stripe_subscription_id)
+        .then((subscription) => subscription.trial_end)
+        .catch(() => Date.now());
     }
 
-    await stripe.subscriptions.update(subscription.id, { default_payment_method: paymentMethodId });
+    // ! Create stripe checkout session in subscription mode
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      customer: user.stripe_id,
+      client_reference_id: project.id,
+      line_items: [{ price: config.nowPlanPriceId, quantity: 1 }],
+      subscription_data: {
+        metadata: { projectId: project.id },
+        trial_end: trialEnd,
+      },
+      success_url: `${config.frontendURL}/myprojects`,
+      cancel_url: `${config.frontendURL}/myprojects`,
+    });
 
-    res.send(await project.save());
+    res.send({ sessionId: session.id });
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -183,6 +155,12 @@ router.get('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
     );
 
     subscription.payment_intents = subscription.payment_intents.filter((pi) => pi);
+    subscription.default_payment_method = {
+      created: subscription.default_payment_method.created,
+      card: {
+        last4: subscription.default_payment_method.card.last4,
+      },
+    };
 
     return res.send(subscription);
   } catch (err) {
@@ -201,6 +179,15 @@ router.get('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) =
     response.default_payment_method = await stripe.paymentMethods
       .retrieve(project.stripe_payment_method_id)
       .catch(() => null);
+
+    if (response.default_payment_method) {
+      response.default_payment_method = {
+        created: response.default_payment_method.created,
+        card: {
+          last4: response.default_payment_method.card.last4,
+        },
+      };
+    }
 
     response.payment_intents.data = await mapAsyncInSlices(
       project.payment_intent_ids, 10,

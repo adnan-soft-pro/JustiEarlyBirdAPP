@@ -7,7 +7,7 @@ const ProjectSchema = new Schema({
   site_type: { type: String, required: true, enum: ['KS', 'IG'] },
   url: { type: String, required: true, unique: true },
   email: { type: String, required: true },
-  password: { type: String, required: true },
+  password: { type: String, required: true, select: false },
   display_name: { type: String },
   is_active: { type: Boolean, default: false },
   is_payment_active: { type: Boolean, default: false },

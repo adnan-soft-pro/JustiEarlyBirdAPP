@@ -6,10 +6,10 @@ const router = require('express').Router();
 const logger = require('../helpers/logger');
 const { mapAsync } = require('../helpers/mapAsync');
 const config = require('../config/index').app;
-const normalizeUrl = require('normalize-url');
 
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const startChargeFlow = require('../helpers/startChargeFlow');
+const validateProjectUrl = require('../helpers/validateProjectUrl');
 
 const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
@@ -18,7 +18,6 @@ const exist = exist_setIdKey('id');
 const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
 const RewardChangeLogModel = require('../models/reward_change_log');
-
 const stripe = require('stripe')(config.stripeSecret);
 
 /**
@@ -41,24 +40,27 @@ router.get('/:id', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
-/**
- * Endpoint: /projects/:id
- * Method: PUT
- * @function
- * @name UpateProject
- * @param  {string}   id
- * @body   {object}  project
- * @return {object}  project
- */
 router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
-    if (!req.body.is_active) await deleteProjectFromDynamo(req.params.id);
-    await ProjectModel.findByIdAndUpdate(req.params.id, req.body);
+    const { project } = req;
+    const projectUpd = { ...project._doc, ...req.body };
 
-    res.send(await ProjectModel.findById(req.params.id).exec());
+    if ((projectUpd.site_type !== project.site_type) || (projectUpd.url !== project.url)) {
+      try {
+        projectUpd.url = await validateProjectUrl(projectUpd.site_type, projectUpd.url, project.id);
+      } catch (err) {
+        return res.status(400).send(err.message);
+      }
+    }
+
+    if (project.is_active && project.is_active !== projectUpd.is_active) {
+      await deleteProjectFromDynamo(project.id).catch(() => {});
+    }
+
+    res.send(await ProjectModel.findByIdAndUpdate(project.id, projectUpd, { new: true }));
   } catch (err) {
     logger.error(err);
-    next(new Error('This project was already added by a different account, please contact our support team'));
+    next(new Error(err));
   }
 });
 
@@ -159,9 +161,12 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
 
-    if (project.plan !== 'later_plan') return res.status(400).send('Project doesn\'t use LaterPlan');
-    if (!project.finished_at) return res.status(400).send('Project is not finished yet');
-    if (project.charge_flow_status !== 'scheduled') return res.status(400).send('Charge flow is already started for this project');
+    const reason400 = null
+      || (project.plan !== 'later_plan' && "Project doesn't have later_plan")
+      || (!project.finished_at && 'Project is not finished yet')
+      || (project.charge_flow_status !== 'scheduled' && 'Charge flow is already started for this project');
+
+    if (reason400) return res.status(400).send(reason400);
 
     const charge_flow_started = await startChargeFlow(project);
     res.send({ charge_flow_started });
@@ -180,7 +185,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
 
     switch (project.plan) {
       case ('later_plan'): {
-        project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
+        project.days_in_pause += Math.floor((new Date() - project.last_paused_at || 0) / oneDay);
         break;
       }
       case ('now_plan'): {
@@ -263,18 +268,6 @@ router.get('/:id/logs', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
-/**
- * Endpoint: /projects/
- * Method: POST
- * @function
- * @name create
- * @body  {string}  site_type
- * @body  {string}  email
- * @body  {string}  password
- * @body  {string}  display_name
- * @body  {string}  url
- * @return {object}  project
- */
 router.post('/', async (req, res, next) => {
   try {
     const { user } = req;
@@ -291,22 +284,12 @@ router.post('/', async (req, res, next) => {
     if (Object.keys(extra).length) {
       return res.status(400).send(`Body contains extra fields (${Object.keys(extra)})`);
     }
-    let normalizedUrl;
+
+    let validUrl;
     try {
-      [normalizedUrl] = normalizeUrl(url, {
-        stripProtocol: true,
-        stripHash: true,
-        stripWWW: true,
-      }).match(/^(.+\/projects\/[^/]+)/g);
+      validUrl = await validateProjectUrl(site_type, url);
     } catch (err) {
-      throw new Error('Invalid url');
-    }
-
-    const existingProject = await ProjectModel.findOne({ url: { $regex: normalizedUrl } });
-
-    if (existingProject) {
-      res.status(400);
-      throw new Error('This project was already added by a different account, please contact our support team');
+      return res.status(400).send(err.message);
     }
 
     const project = new ProjectModel({
@@ -314,7 +297,7 @@ router.post('/', async (req, res, next) => {
       site_type,
       email,
       password,
-      url: normalizeUrl(url, { forceHttps: true, stripHash: true }),
+      url: validUrl,
       run_option: run_option || 1,
       is_active,
     });
