@@ -36,7 +36,7 @@ router.get('/users', async (req, res, next) => {
 
 router.get('/user/:id', async (req, res, next) => {
   try {
-    const user = (await UserModel.findById(req.params.id)).map((u) => u._doc);
+    const { _doc: user } = await UserModel.findById(req.params.id);
 
     user.projects = await ProjectModel.find({ user_id: user._id });
 
@@ -80,8 +80,8 @@ router.post('/project/suspend/:id', projectExist, async (req, res, next) => {
 router.delete('/project/:id', projectExist, async (req, res, next) => {
   try {
     const project = await ProjectModel.findById(req.params.id);
-    await RewardModel.remove({ project_id: project._id });
-    await RewardChangeLog.remove({ project_id: project._id });
+    await RewardModel.deleteMany({ project_id: project._id });
+    await RewardChangeLog.deleteMany({ project_id: project._id });
 
     if (project.plan === 'now_plan') {
       if (project.stripe_subscription_id) {
@@ -98,26 +98,28 @@ router.delete('/project/:id', projectExist, async (req, res, next) => {
   }
 });
 
-// router.delete('/user/:id', async (req, res, next) => {
-//   try {
+router.delete('/user/:id', async (req, res, next) => {
+  try {
+    const user = await UserModel.findById(req.params.id);
+    await user.remove();
+    const projects = (await ProjectModel.find({ user_id: user._id })).map((project) => project._doc);
+    await mapAsync(projects, async (project) => {
+      await RewardModel.deleteMany({ project_id: project._id });
+      await RewardChangeLog.deleteMany({ project_id: project._id });
+      if (project.plan === 'now_plan') {
+        if (project.stripe_subscription_id) {
+          await stripe.subscriptions.del(project.stripe_subscription_id);
+        }
+      }
+      await deleteProjectFromDynamo(project._id).catch(() => {});
+      await ProjectModel.findByIdAndRemove(project._id);
+    });
 
-//     const project = await ProjectModel.findById(req.params.id);
-//     await RewardModel.remove({ project_id: project._id });
-//     await RewardChangeLog.remove({ project_id: project._id });
-
-//     if (project.plan === 'now_plan') {
-//       if (project.stripe_subscription_id) {
-//         await stripe.subscriptions.del(project.stripe_subscription_id);
-//       }
-//     }
-//     await deleteProjectFromDynamo(req.params.id);
-//     await req.project.deleteOne();
-
-//     res.send({ message: 'Project successfully deleted' }).status(200);
-//   } catch (err) {
-//     logger.error(err);
-//     next(new Error(err));
-//   }
-// });
+    res.send({ message: 'User successfully deleted' }).status(200);
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
 
 module.exports = router;
