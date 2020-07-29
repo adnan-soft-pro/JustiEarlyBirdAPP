@@ -185,7 +185,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
 
     switch (project.plan) {
       case ('later_plan'): {
-        project.days_in_pause += Math.floor((new Date() - project.last_paused_at || 0) / oneDay);
+        project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
         break;
       }
       case ('now_plan'): {
@@ -277,7 +277,6 @@ router.post('/', async (req, res, next) => {
       password,
       url,
       run_option,
-      is_active,
       ...extra
     } = req.body;
 
@@ -299,7 +298,6 @@ router.post('/', async (req, res, next) => {
       password,
       url: validUrl,
       run_option: run_option || 1,
-      is_active,
     });
 
     res.send(await project.save());
