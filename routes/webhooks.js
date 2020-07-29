@@ -70,7 +70,7 @@ const stripeEventHandlers = {
 
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
-      { is_payment_active: false, stripe_subscription_id: '' },
+      { is_payment_active: false, stripe_subscription_id: '', plan: '' },
     );
 
     if (!project) {
@@ -133,6 +133,8 @@ const stripeEventHandlers = {
     switch (project.charge_flow_status) {
       case ('/1'): {
         project.charge_flow_status = 'done';
+        project.stripe_payment_method_id = '';
+        project.plan = '';
         await project.save();
         logger.info(`Project ${projectId} is fully paid (/1)`);
         break;
@@ -147,6 +149,8 @@ const stripeEventHandlers = {
       case ('/4'): {
         if (project.debt === 0) {
           project.charge_flow_status = 'done';
+          project.stripe_payment_method_id = '';
+          project.plan = '';
         }
         await project.save();
         logger.info(`Project ${projectId} is ${project.debt === 0 ? 'fully' : 'partially'} paid (/4)`);
