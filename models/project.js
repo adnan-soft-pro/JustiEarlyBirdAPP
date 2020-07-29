@@ -22,6 +22,7 @@ const ProjectSchema = new Schema({
   charge_flow_status: { type: String, enum: ['not_needed', 'scheduled', '/1', '/2', '/4', 'done'] },
   initial_debt: { type: Number },
   debt: { type: Number },
+  total_paid: { type: Number, default: 0 },
   last_charge_attempt_at: { type: Date },
   last_adjusted: { type: Date },
   total_adjusted: { type: Number },

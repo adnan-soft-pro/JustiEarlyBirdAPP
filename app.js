@@ -13,6 +13,7 @@ const projects = require('./routes/projects');
 const payment = require('./routes/payment');
 const webhoks = require('./routes/webhooks');
 const rewards = require('./routes/rewards');
+const admin = require('./routes/admin');
 
 const index = require('./routes/index');
 // App instance
@@ -53,6 +54,7 @@ app.use('/payment', authMiddleware, payment);
 app.use('/projects', authMiddleware, projects);
 app.use('/rewards', authMiddleware, rewards);
 app.use('/webhooks', webhoks);
+app.use('/admin', admin);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {

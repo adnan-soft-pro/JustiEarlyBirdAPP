@@ -55,7 +55,10 @@ const stripeEventHandlers = {
 
     const project = await ProjectModel.findOneAndUpdate(
       { stripe_subscription_id: subscription.id },
-      { is_payment_active: ['active', 'trialing'].includes(subscription.status) },
+      {
+        is_payment_active: ['active', 'trialing'].includes(subscription.status),
+        debt: ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15,
+      },
     );
 
     if (!project) {
@@ -112,15 +115,21 @@ const stripeEventHandlers = {
   'payment_intent.succeeded': async (req, res) => {
     const paymentIntent = req.body.data.object;
 
-    const projectId = paymentIntent.metadata.project_id;
+    if (paymentIntent.invoice) {
+      const invoice = await stripe.invoices.retrieve(
+        paymentIntent.invoice,
+        { expand: ['subscription'] },
+      );
+      paymentIntent.metadata = invoice.subscription.metadata;
+    }
+
+    const { projectId } = paymentIntent.metadata;
     const project = await ProjectModel.findById(projectId);
 
     if (!project) {
       logger.warn(`PaymentIntent ${paymentIntent.id} points to not existing project ${projectId}`);
       return res.sendStatus(200);
     }
-
-    if (project.plan !== 'later_plan') return res.sendStatus(200);
 
     const user = await UserModel.findById(project.user_id);
 
@@ -129,14 +138,21 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
-    project.debt -= paymentIntent.amount;
+    project.total_paid += paymentIntent.amount_received;
     project.last_charge_attempt_at = new Date();
+
+    if (project.plan === 'now_plan') {
+      await project.save();
+      return res.sendStatus(200);
+    }
+
+    project.debt -= paymentIntent.amount_received;
 
     switch (project.charge_flow_status) {
       case ('/1'): {
         project.charge_flow_status = 'done';
         project.stripe_payment_method_id = '';
-        project.plan = '';
+        project.plan = undefined;
         await project.save();
         logger.info(`Project ${projectId} is fully paid (/1)`);
         break;
@@ -152,7 +168,7 @@ const stripeEventHandlers = {
         if (project.debt === 0) {
           project.charge_flow_status = 'done';
           project.stripe_payment_method_id = '';
-          project.plan = '';
+          project.plan = undefined;
         }
         await project.save();
         logger.info(`Project ${projectId} is ${project.debt === 0 ? 'fully' : 'partially'} paid (/4)`);

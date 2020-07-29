@@ -31,7 +31,7 @@ module.exports = async (project, user = null, willThrow = false) => {
       off_session: true,
       confirm: true,
       metadata: {
-        project_id: project.id,
+        projectId: project.id,
         charge_flow_status: project.charge_flow_status,
       },
     });
