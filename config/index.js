@@ -10,6 +10,8 @@ module.exports = {
     monitoringUrl: process.env.MONITORING_URL,
     nowPlanPriceId: process.env.NOW_PLAN_PRICE_ID,
     trialPeriodLaterPlan: process.env.TRIAL_PERIOD_LATER_PLAN,
+    emailFrom: process.env.EMAIL_FROM,
+    sendgripApiKey: process.env.SENDGRID_API_KEY,
   },
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',

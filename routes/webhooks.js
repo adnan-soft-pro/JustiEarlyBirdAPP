@@ -198,7 +198,7 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
-    const projectId = paymentIntent.metadata.project_id;
+    const { projectId } = paymentIntent.metadata;
     const project = await ProjectModel.findById(projectId);
 
     if (!project) {
@@ -246,8 +246,12 @@ const stripeEventHandlers = {
   'payment_intent.created': async (req, res) => {
     try {
       const paymentIntent = req.body.data.object;
-      const projectId = paymentIntent.metadata.project_id;
-      if (!projectId) return res.sendStatus(200);
+      const { projectId } = paymentIntent.metadata;
+
+      if (!projectId) {
+        logger.warn(`Payment Intent ${paymentIntent.id} doesnt have metadata.projectId`);
+        return res.sendStatus(200);
+      }
 
       const result = await ProjectModel.findByIdAndUpdate(
         projectId,

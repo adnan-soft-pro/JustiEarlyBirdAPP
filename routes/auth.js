@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 /* eslint-disable import/order */
 /* eslint-disable consistent-return */
 /* eslint-disable no-underscore-dangle */
@@ -8,8 +9,11 @@ const axios = require('axios');
 const logger = require('../helpers/logger');
 const UserModel = require('../models/user');
 const config = require('../config/index').app;
-
+const { resetPassword } = require('../options/resetPasswordMail');
 const stripe = require('stripe')(config.stripeSecret);
+const sgMail = require('@sendgrid/mail');
+
+sgMail.setApiKey(config.sendgripApiKey);
 
 const router = express.Router();
 
@@ -137,4 +141,53 @@ router.post('/login/social', async (req, res, next) => {
   }
 });
 
+const generateToken = (object) => {
+  const tokenLifeTime = 3600 * 24 * 1000; // 24 hour
+  return jwt.sign(object, config.jwtSecret, { expiresIn: tokenLifeTime });
+};
+
+router.post('/reset', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await UserModel.findOne({ email: new RegExp(`^${email}$`, 'i') });
+    if (!user) return res.status(404).send('User is not found');
+
+    const object = {
+      _id: user._id,
+      email: user.email,
+    };
+
+    user.token_expires_in = new Date() + 3600 * 24 * 1000;
+    user.token = generateToken(object);
+
+    await user.save();
+    await sgMail.send(resetPassword(user.email, user.token));
+
+    res.send('The message was sent');
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+router.put('/reset', async (req, res, next) => {
+  try {
+    const { password, token } = req.body;
+    const user = await UserModel.findOne({ token });
+    if (!user) res.status(404).send('Password reset token is invalid or has expired.');
+
+    user.password = password;
+    user.token_expires_in = undefined;
+    user.token = undefined;
+
+    await user.save();
+    res.send({
+      user, token,
+    });
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
 module.exports = router;

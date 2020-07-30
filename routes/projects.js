@@ -187,7 +187,13 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
       return res.status(400).send('Project already active');
     }
 
-    if (project.is_suspended) return res.status(403).send('Project is suspended');
+    if (project.is_suspended) {
+      return res.status(403).send(
+        'Your project has been was suspended.'
+         + ' Please contact info@justearlybird.com to get support and resolve the situation.'
+         + ' We look forward to helping you with this.',
+      );
+    }
     switch (project.plan) {
       case ('later_plan'): {
         project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
