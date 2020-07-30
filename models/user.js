@@ -15,8 +15,6 @@ const UserSchema = new Schema({
   location: { type: String },
   timezone: { type: String },
   is_suspended: { type: Boolean, default: false },
-  token: { type: String },
-  token_expires_in: { type: Date },
 }, {
   timestamps: true,
 });
