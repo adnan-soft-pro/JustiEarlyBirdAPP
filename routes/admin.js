@@ -57,7 +57,7 @@ router.post('/user/suspend/:id', async (req, res, next) => {
   try {
     const user = await UserModel.findByIdAndUpdate(
       req.params.id,
-      { is_suspended: true },
+      { is_suspended: req.body.suspend },
       { new: true },
     );
 
@@ -72,7 +72,7 @@ router.post('/project/suspend/:id', projectExist, async (req, res, next) => {
   try {
     const project = await ProjectModel.findByIdAndUpdate(
       req.params.id,
-      { is_suspended: true },
+      { is_suspended: req.body.suspend },
       { new: true },
     );
 
