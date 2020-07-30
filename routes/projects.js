@@ -210,7 +210,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
         return res.status(400).send(`Project has incorrect plan ${project.plan}`);
       }
     }
-    project.total_billing_time += new Date() - project.last_billing_started_at;
+    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = true;
     res.send(await project.save());
   } catch (err) {
@@ -243,7 +243,7 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
       }
     }
 
-    project.total_billing_time += new Date() - project.last_billing_started_at;
+    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = false;
 
     res.send(await project.save());
