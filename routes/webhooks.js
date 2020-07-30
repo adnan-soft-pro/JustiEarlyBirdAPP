@@ -226,6 +226,7 @@ const stripeEventHandlers = {
         { $push: { payment_intent_ids: paymentIntent.id } },
       );
       if (!result) throw new Error(`Project ${projectId} not found`);
+      res.sendStatus(200);
     } catch (err) {
       logger.error(err);
       res.sendStatus(200);
