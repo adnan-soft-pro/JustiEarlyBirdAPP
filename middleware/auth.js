@@ -18,6 +18,7 @@ module.exports = async (req, res, next) => {
           'Please contact info@justearlybird.com to get support and resolve the situation. We look forward to helping you with this.',
         );
     }
+
     next();
   } catch (err) {
     res.status(401).send('You are not authorized');

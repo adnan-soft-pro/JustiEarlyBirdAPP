@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 const authMiddleware = require('./middleware/auth');
+const adminMiddleware = require('./middleware/admin');
 // Router
 const auth = require('./routes/auth');
 const users = require('./routes/users');
@@ -54,7 +55,7 @@ app.use('/payment', authMiddleware, payment);
 app.use('/projects', authMiddleware, projects);
 app.use('/rewards', authMiddleware, rewards);
 app.use('/webhooks', webhoks);
-app.use('/admin', admin);
+app.use('/admin', authMiddleware, adminMiddleware, admin);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {

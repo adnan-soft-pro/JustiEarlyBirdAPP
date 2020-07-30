@@ -1,3 +1,5 @@
+/* eslint-disable camelcase */
+/* eslint-disable consistent-return */
 /* eslint-disable import/order */
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
@@ -10,6 +12,7 @@ const config = require('../config/index').app;
 const stripe = require('stripe')(config.stripeSecret);
 const logger = require('../helpers/logger');
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
+const startChargeFlow = require('../helpers/startChargeFlow');
 const { mapAsync } = require('../helpers/mapAsync');
 const ProjectModel = require('../models/project');
 const UserModel = require('../models/user');
@@ -22,7 +25,6 @@ router.get('/users', async (req, res, next) => {
 
     await mapAsync(users, async (user) => {
       user.projects = await ProjectModel.find({ user_id: user._id });
-
       user.owedAmount = user.projects.reduce((sum, p) => sum + (p.debt || 0), 0);
       user.paidAmount = user.projects.reduce((sum, p) => sum + (p.total_paid || 0), 0);
     });
@@ -39,6 +41,10 @@ router.get('/user/:id', async (req, res, next) => {
     const { _doc: user } = await UserModel.findById(req.params.id);
 
     user.projects = await ProjectModel.find({ user_id: user._id });
+    user.projects.forEach((project) => {
+      if (project.last_billing_started_at === undefined) return 0;
+      project.total_billing_time += new Date() - project.last_billing_started_at;
+    });
 
     res.send(user);
   } catch (err) {
@@ -102,7 +108,10 @@ router.delete('/user/:id', async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.params.id);
     await user.remove();
-    const projects = (await ProjectModel.find({ user_id: user._id })).map((project) => project._doc);
+    const projects = (await ProjectModel
+      .find({ user_id: user._id })
+    ).map((project) => project._doc);
+
     await mapAsync(projects, async (project) => {
       await RewardModel.deleteMany({ project_id: project._id });
       await RewardChangeLog.deleteMany({ project_id: project._id });
@@ -116,6 +125,25 @@ router.delete('/user/:id', async (req, res, next) => {
     });
 
     res.send({ message: 'User successfully deleted' }).status(200);
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+router.post('/project/:id/pay', projectExist, async (req, res, next) => {
+  try {
+    const { project } = req;
+
+    const reason400 = null
+  || (project.plan !== 'later_plan' && "Project doesn't have later_plan")
+  || (!project.finished_at && 'Project is not finished yet')
+  || (project.charge_flow_status !== 'scheduled' && 'Charge flow is already started for this project');
+
+    if (reason400) return res.status(400).send(reason400);
+
+    const charge_flow_started = await startChargeFlow(project);
+    res.send({ charge_flow_started });
   } catch (err) {
     logger.error(err);
     next(new Error(err));

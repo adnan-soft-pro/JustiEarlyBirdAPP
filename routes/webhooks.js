@@ -52,18 +52,18 @@ const stripeEventHandlers = {
   // On now_plan subscription status changes
   'customer.subscription.updated': async (req, res) => {
     const subscription = req.body.data.object;
-
-    const project = await ProjectModel.findOneAndUpdate(
-      { stripe_subscription_id: subscription.id },
-      {
-        is_payment_active: ['active', 'trialing'].includes(subscription.status),
-        debt: ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15,
-      },
-    );
-
+    const project = await ProjectModel.findOne({ stripe_subscription_id: subscription.id });
     if (!project) {
       logger.warn(`Project with subscription ${subscription.id} was not found`);
+      return res.sendStatus(200);
     }
+
+    if (!project.is_payment_active && subscription.status === 'active') {
+      project.total_billing_time += new Date() - project.last_billing_started_at;
+    }
+    project.is_payment_active = ['active', 'trialing'].includes(subscription.status);
+    project.debt = ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15;
+    await project.save();
 
     res.sendStatus(200);
   },
@@ -72,14 +72,21 @@ const stripeEventHandlers = {
   'customer.subscription.deleted': async (req, res) => {
     const subscription = req.body.data.object;
 
-    const project = await ProjectModel.findOneAndUpdate(
+    const project = await ProjectModel.findOne(
       { stripe_subscription_id: subscription.id },
-      { is_payment_active: false, stripe_subscription_id: '', plan: '' },
     );
 
     if (!project) {
       logger.warn(`Project with subscription ${subscription.id} was not found`);
+      return res.sendStatus(200);
     }
+
+    project.is_payment_active = false;
+    project.stripe_subscription_id = '';
+    project.plan = '';
+    project.total_billing_time += new Date() - project.last_billing_started_at;
+
+    await project.save();
 
     res.sendStatus(200);
   },
@@ -101,6 +108,8 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
+    project.last_billing_started_at = new Date();
+    project.total_billing_time -= (+config.trialPeriodLaterPlan);
     project.plan = 'later_plan';
     project.is_payment_active = true;
     project.payment_configured_at = new Date();
@@ -201,7 +210,6 @@ const stripeEventHandlers = {
       logger.warn(`PaymentIntent ${paymentIntent.id} points to project ${projectId} with not existing user ${project.user_id}`);
       return res.sendStatus(200);
     }
-
     project.last_charge_attempt_at = new Date();
 
     switch (project.charge_flow_status) {
