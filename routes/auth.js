@@ -131,11 +131,11 @@ router.post('/login/social', async (req, res, next) => {
       user = await user.save();
     }
 
-    const object = {
-      _id: user._id,
-      email: user.email,
-    };
-    const token = jwt.sign(object, config.jwtSecret);
+    const token = jwt.sign(
+      { id: user._id, email: user.email, type: 'login' },
+      config.jwtSecret,
+    );
+
     res.header('authorization', `Bearer ${token}`).send(user);
   } catch (err) {
     logger.error(err);
