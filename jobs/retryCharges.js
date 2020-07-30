@@ -11,6 +11,6 @@ module.exports = async () => {
     charge_flow_status: '/4',
     last_charge_attempt_at: { $lte: new Date(Date.now() - twoDays) },
   });
-  await mapAsyncInSlices(projects, 10, chargeForProject);
+  await mapAsyncInSlices(projects, 10, (p) => chargeForProject(p).catch(() => {}));
   logger.info(`Retry charges cron-job finished (${projects.length} projects)`);
 };

@@ -172,8 +172,8 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
 
     if (reason400) return res.status(400).send(reason400);
 
-    const charge_flow_started = await startChargeFlow(project);
-    res.send({ charge_flow_started });
+    await startChargeFlow(project, true);
+    res.sendStatus(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

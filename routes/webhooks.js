@@ -169,6 +169,10 @@ const stripeEventHandlers = {
   'payment_intent.payment_failed': async (req, res) => {
     const paymentIntent = req.body.data.object;
 
+    if (paymentIntent.metadata.suspendChargeFlow) {
+      return res.sendStatus(200);
+    }
+
     const projectId = paymentIntent.metadata.project_id;
     const project = await ProjectModel.findById(projectId);
 

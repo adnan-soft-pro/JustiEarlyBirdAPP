@@ -11,6 +11,6 @@ module.exports = async () => {
     charge_flow_status: 'scheduled',
     finished_at: { $lte: new Date(Date.now() - thirtyDays) },
   });
-  await mapAsyncInSlices(projects, 10, startChargeFlow);
+  await mapAsyncInSlices(projects, 10, (p) => startChargeFlow(p).catch(() => {}));
   logger.info(`Start charge flows cron-job finished (${projects.length} projects)`);
 };
