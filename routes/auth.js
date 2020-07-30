@@ -148,7 +148,9 @@ router.post('/reset', async (req, res, next) => {
     const { email } = req.body;
 
     const user = await UserModel.findOne({ email: new RegExp(`^${email}$`, 'i') });
-    if (!user) return res.status(404).send('User is not found');
+    if (!user) {
+      return res.status(404).send('User is not found');
+    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email, type: 'reset' },
@@ -178,15 +180,20 @@ router.put('/reset', async (req, res, next) => {
     }
 
     if (tokenPayload.type !== 'reset') {
-      return res.status(401).send("Token isn't for password reset");
+      return res.status(403).send("Token isn't for password reset");
     }
 
     const user = await UserModel.findById(tokenPayload.id);
     if (!user) {
-      res.status(404).send('Password reset token is invalid or has expired.');
+      res.status(404).send('User not found');
+    }
+
+    if (new Date(tokenPayload.iat * 1000) < user.password_changed_at) {
+      return res.status(403).send('Token is outdated');
     }
 
     user.password = password;
+    user.password_changed_at = new Date();
     await user.save();
 
     res.send(200);
