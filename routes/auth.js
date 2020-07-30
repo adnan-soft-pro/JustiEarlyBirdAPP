@@ -71,9 +71,13 @@ router.post('/register', async (req, res, next) => {
 router.post('/login', async (req, res, next) => {
   try {
     const { password, email } = req.body;
-
     const user = await UserModel.findOne({ email: new RegExp(`^${email}$`, 'i') });
     if (!user) return res.status(404).send('User is not found');
+    if (user.is_suspended) {
+      return res.status(403).send(
+        'Please contact info@justearlybird.com to get support and resolve the situation. We look forward to helping you with this.',
+      );
+    }
 
     const check = await bcrypt.compare(password, user.password);
     if (!check) return res.status(401).send('Invalid password');

@@ -128,8 +128,8 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
         if (project.stripe_subscription_id) {
           await stripe.subscriptions.del(project.stripe_subscription_id);
         } else {
-          logger.warn(`Project with stripe_subscription_id:${project.stripe_subscription_id} not found`);
-          res.status(500).send(`Project with stripe_subscription_id:${project.stripe_subscription_id} not found`);
+          logger.warn(`Project ${project._id} doesn't have stripe_subscription_id`);
+          res.status(500).send(`Project ${project._id} doesn't have stripe_subscription_id`);
         }
         break;
       }
@@ -187,6 +187,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
       return res.status(400).send('Project already active');
     }
 
+    if (project.is_suspended) return res.status(403).send('Project is suspended');
     switch (project.plan) {
       case ('later_plan'): {
         project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
@@ -203,7 +204,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
         return res.status(400).send(`Project has incorrect plan ${project.plan}`);
       }
     }
-
+    project.total_billing_time += new Date() - project.last_billing_started_at;
     project.is_active = true;
     res.send(await project.save());
   } catch (err) {
@@ -236,7 +237,9 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
       }
     }
 
+    project.total_billing_time += new Date() - project.last_billing_started_at;
     project.is_active = false;
+
     res.send(await project.save());
   } catch (err) {
     next(new Error(err));

@@ -31,8 +31,8 @@ module.exports = async (project, user = null, suspendChargeFlow = false) => {
       off_session: true,
       confirm: true,
       metadata: {
-        project_id: project.id,
         suspendChargeFlow,
+        projectId: project.id,
       },
     });
     logger.info(`PaymentIntent created ${project.id} (${project.charge_flow_status})`);
