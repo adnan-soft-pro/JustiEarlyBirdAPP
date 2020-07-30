@@ -9,6 +9,7 @@ module.exports = {
     jwtSecret: process.env.TOKEN_SECRET,
     monitoringUrl: process.env.MONITORING_URL,
     nowPlanPriceId: process.env.NOW_PLAN_PRICE_ID,
+    trialPeriodLaterPlan: process.env.TRIAL_PERIOD_LATER_PLAN,
   },
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',

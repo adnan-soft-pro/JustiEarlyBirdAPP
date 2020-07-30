@@ -52,15 +52,18 @@ const stripeEventHandlers = {
   // On now_plan subscription status changes
   'customer.subscription.updated': async (req, res) => {
     const subscription = req.body.data.object;
-
-    const project = await ProjectModel.findOneAndUpdate(
-      { stripe_subscription_id: subscription.id },
-      { is_payment_active: ['active', 'trialing'].includes(subscription.status) },
-    );
-
+    const project = await ProjectModel.findOne({ stripe_subscription_id: subscription.id });
     if (!project) {
       logger.warn(`Project with subscription ${subscription.id} was not found`);
+      return res.sendStatus(200);
     }
+
+    if (!project.is_payment_active && subscription.status === 'active') {
+      project.total_billing_time += new Date() - project.last_billing_started_at;
+    }
+    project.is_payment_active = ['active', 'trialing'].includes(subscription.status);
+    project.debt = ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15;
+    await project.save();
 
     res.sendStatus(200);
   },
@@ -69,14 +72,21 @@ const stripeEventHandlers = {
   'customer.subscription.deleted': async (req, res) => {
     const subscription = req.body.data.object;
 
-    const project = await ProjectModel.findOneAndUpdate(
+    const project = await ProjectModel.findOne(
       { stripe_subscription_id: subscription.id },
-      { is_payment_active: false, stripe_subscription_id: '', plan: '' },
     );
 
     if (!project) {
       logger.warn(`Project with subscription ${subscription.id} was not found`);
+      return res.sendStatus(200);
     }
+
+    project.is_payment_active = false;
+    project.stripe_subscription_id = '';
+    project.plan = '';
+    project.total_billing_time += new Date() - project.last_billing_started_at;
+
+    await project.save();
 
     res.sendStatus(200);
   },
@@ -98,6 +108,8 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
+    project.last_billing_started_at = new Date();
+    project.total_billing_time -= (+config.trialPeriodLaterPlan);
     project.plan = 'later_plan';
     project.is_payment_active = true;
     project.payment_configured_at = new Date();
@@ -112,15 +124,21 @@ const stripeEventHandlers = {
   'payment_intent.succeeded': async (req, res) => {
     const paymentIntent = req.body.data.object;
 
-    const projectId = paymentIntent.metadata.project_id;
+    if (paymentIntent.invoice) {
+      const invoice = await stripe.invoices.retrieve(
+        paymentIntent.invoice,
+        { expand: ['subscription'] },
+      );
+      paymentIntent.metadata = invoice.subscription.metadata;
+    }
+
+    const { projectId } = paymentIntent.metadata;
     const project = await ProjectModel.findById(projectId);
 
     if (!project) {
       logger.warn(`PaymentIntent ${paymentIntent.id} points to not existing project ${projectId}`);
       return res.sendStatus(200);
     }
-
-    if (project.plan !== 'later_plan') return res.sendStatus(200);
 
     const user = await UserModel.findById(project.user_id);
 
@@ -129,14 +147,21 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
-    project.debt -= paymentIntent.amount;
+    project.total_paid += paymentIntent.amount_received;
     project.last_charge_attempt_at = new Date();
+
+    if (project.plan === 'now_plan') {
+      await project.save();
+      return res.sendStatus(200);
+    }
+
+    project.debt -= paymentIntent.amount_received;
 
     switch (project.charge_flow_status) {
       case ('/1'): {
         project.charge_flow_status = 'done';
         project.stripe_payment_method_id = '';
-        project.plan = '';
+        project.plan = undefined;
         await project.save();
         logger.info(`Project ${projectId} is fully paid (/1)`);
         break;
@@ -152,7 +177,7 @@ const stripeEventHandlers = {
         if (project.debt === 0) {
           project.charge_flow_status = 'done';
           project.stripe_payment_method_id = '';
-          project.plan = '';
+          project.plan = undefined;
         }
         await project.save();
         logger.info(`Project ${projectId} is ${project.debt === 0 ? 'fully' : 'partially'} paid (/4)`);
@@ -185,7 +210,6 @@ const stripeEventHandlers = {
       logger.warn(`PaymentIntent ${paymentIntent.id} points to project ${projectId} with not existing user ${project.user_id}`);
       return res.sendStatus(200);
     }
-
     project.last_charge_attempt_at = new Date();
 
     switch (project.charge_flow_status) {

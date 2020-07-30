@@ -22,12 +22,16 @@ const ProjectSchema = new Schema({
   charge_flow_status: { type: String, enum: ['not_needed', 'scheduled', '/1', '/2', '/4', 'done'] },
   initial_debt: { type: Number },
   debt: { type: Number },
+  total_paid: { type: Number, default: 0 },
   last_charge_attempt_at: { type: Date },
   last_adjusted: { type: Date },
   total_adjusted: { type: Number },
   credentials: { type: Boolean },
   last_check: { type: Date },
   payment_intent_ids: { type: [String] },
+  is_suspended: { type: Boolean, default: false },
+  last_billing_started_at: { type: Date },
+  total_billing_time: { type: Number, default: 0 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');
