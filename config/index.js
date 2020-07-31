@@ -9,7 +9,7 @@ module.exports = {
     jwtSecret: process.env.TOKEN_SECRET,
     monitoringUrl: process.env.MONITORING_URL,
     nowPlanPriceId: process.env.NOW_PLAN_PRICE_ID,
-    trialPeriodLaterPlan: process.env.TRIAL_PERIOD_LATER_PLAN,
+    trialPeriodLaterPlan: process.env.TRIAL_PERIOD_LATER_PLAN || 3,
     emailFrom: process.env.EMAIL_FROM,
     sendgripApiKey: process.env.SENDGRID_API_KEY,
   },
