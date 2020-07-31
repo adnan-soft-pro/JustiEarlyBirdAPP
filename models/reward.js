@@ -18,6 +18,8 @@ const RewardSchema = new Schema({
   enable_limit_sales: { type: Boolean, default: false },
   last_checked: { type: Date },
   last_adjusted: { type: Date },
+  total_deleted_adjusted: { type: Number, default: 0 },
+  total_deleted_checked: { type: Number, default: 0 },
 }, {
   timestamps: true,
 });
