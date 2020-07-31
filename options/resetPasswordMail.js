@@ -1,5 +1,5 @@
 const config = require('../config/index').app;
-
+/* eslint-disable no-irregular-whitespace */
 exports.resetPassword = (email, token) => ({
   to: email,
   from: config.emailFrom,

@@ -54,7 +54,7 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
     }
 
     if (project.is_active && project.is_active !== projectUpd.is_active) {
-      await deleteProjectFromDynamo(project.id).catch(() => {});
+      await deleteProjectFromDynamo(project.id).catch(() => { });
     }
 
     res.send(await ProjectModel.findByIdAndUpdate(project.id, projectUpd, { new: true }));
@@ -137,7 +137,8 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       case ('later_plan'): {
         // eslint-disable-next-line max-len
         const daysInUse = Math.floor((project.finished_at - project.payment_configured_at) / oneDay);
-        const initialDebt = (daysInUse - 3 - project.days_in_pause) * laterPlanPerDay;
+        // eslint-disable-next-line max-len
+        const initialDebt = (daysInUse - config.trialPeriodLaterPlan - project.days_in_pause) * laterPlanPerDay;
         project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
         project.debt = initialDebt <= 0 ? 0 : initialDebt;
         project.charge_flow_status = initialDebt <= 0 ? 'not_needed' : 'scheduled';
@@ -190,8 +191,8 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
     if (project.is_suspended) {
       return res.status(403).send(
         'Your project has been was suspended.'
-         + ' Please contact info@justearlybird.com to get support and resolve the situation.'
-         + ' We look forward to helping you with this.',
+        + ' Please contact info@justearlybird.com to get support and resolve the situation.'
+        + ' We look forward to helping you with this.',
       );
     }
     switch (project.plan) {
