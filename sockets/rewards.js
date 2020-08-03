@@ -22,9 +22,21 @@ const handleSubscription = async (socket, data) => {
 
 const init = (io) => {
   RewardChangeLogModel.watch().on('change', (data) => {
-    const { operationType, fullDocument: doc } = data;
-    if (operationType !== 'insert') return;
-    io.sockets.in(doc.reward_id).emit('reward-change-log-created', doc);
+    const { operationType, fullDocument } = data;
+    if (operationType === 'insert') {
+      io.sockets
+        .in(fullDocument.reward_id)
+        .emit('reward-change-log-created', fullDocument);
+    }
+  });
+
+  RewardModel.watch().on('change', (data) => {
+    const { operationType, updateDescription, documentKey } = data;
+    if (operationType === 'update') {
+      io.sockets
+        .in(documentKey._id)
+        .emit('reward-changed', { updateDescription, id: documentKey._id });
+    }
   });
 };
 
