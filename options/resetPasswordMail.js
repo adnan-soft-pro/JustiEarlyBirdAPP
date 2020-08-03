@@ -2,8 +2,10 @@ const config = require('../config/index').app;
 /* eslint-disable no-irregular-whitespace */
 exports.resetPassword = (email, token) => ({
   to: email,
-  from: config.emailFrom,
-  fromname: 'JustEarlybird',
+  from: {
+    name: 'JustEarlybird',
+    email: config.emailFrom,
+  },
   subject: 'Reset your JustEarlybird password',
   html: `<div>Hi there,</div>
   <br/>
