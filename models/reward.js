@@ -20,6 +20,7 @@ const RewardSchema = new Schema({
   last_adjusted: { type: Date },
   total_deleted_adjusted: { type: Number, default: 0 },
   total_deleted_checked: { type: Number, default: 0 },
+  minimization_scheduled: { type: Boolean, default: false },
 }, {
   timestamps: true,
 });
