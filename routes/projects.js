@@ -110,7 +110,7 @@ router.get('/', async (req, res, next) => {
 });
 
 const oneDay = 24 * 60 * 60 * 1000;
-const laterPlanPerDay = 20 * 100;
+const laterPlanPerDay = 15 * 100;
 router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
