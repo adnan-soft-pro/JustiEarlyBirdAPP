@@ -32,6 +32,7 @@ const ProjectSchema = new Schema({
   is_suspended: { type: Boolean, default: false },
   last_billing_started_at: { type: Date },
   total_billing_time: { type: Number, default: 0 },
+  is_finished: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');
