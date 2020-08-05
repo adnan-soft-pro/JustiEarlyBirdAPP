@@ -113,7 +113,7 @@ router.get('/:id/payment_intents', selfOnly, async (req, res, next) => {
     const rp = {};
     paymentIntents.related_projects = rp;
     await mapAsync(paymentIntents.data, async (pi) => {
-      const id = pi.metadata.project_id;
+      const id = pi.metadata.projectId;
       if (!id || id in rp) return;
       rp[id] = ProjectModel.findById(id).exec();
       rp[id] = await rp[id];
