@@ -21,9 +21,12 @@ const handleSubscription = async (socket, data) => {
 
 const init = (io) => {
   ProjectModel.watch().on('change', (data) => {
-    const { operationType, documentKey, updateDescription } = data;
-    if (operationType !== 'update') return;
-    io.sockets.in(data.documentKey._id).emit('project-changed', { updateDescription, id: documentKey._id });
+    const { operationType, updateDescription, documentKey } = data;
+    if (operationType === 'update') {
+      io.sockets
+        .in(documentKey._id)
+        .emit('project-changed', { updateDescription, id: documentKey._id });
+    }
   });
 };
 

@@ -54,7 +54,7 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
     }
 
     if (project.is_active && project.is_active !== projectUpd.is_active) {
-      await deleteProjectFromDynamo(project.id).catch(() => {});
+      await deleteProjectFromDynamo(project.id).catch(() => { });
     }
 
     res.send(await ProjectModel.findByIdAndUpdate(project.id, projectUpd, { new: true }));
@@ -110,7 +110,7 @@ router.get('/', async (req, res, next) => {
 });
 
 const oneDay = 24 * 60 * 60 * 1000;
-const laterPlanPerDay = 20 * 100;
+const laterPlanPerDay = 15 * 100;
 router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
@@ -128,8 +128,8 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
         if (project.stripe_subscription_id) {
           await stripe.subscriptions.del(project.stripe_subscription_id);
         } else {
-          logger.warn(`Project with stripe_subscription_id:${project.stripe_subscription_id} not found`);
-          res.status(500).send(`Project with stripe_subscription_id:${project.stripe_subscription_id} not found`);
+          logger.warn(`Project ${project._id} doesn't have stripe_subscription_id`);
+          res.status(500).send(`Project ${project._id} doesn't have stripe_subscription_id`);
         }
         break;
       }
@@ -137,7 +137,8 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       case ('later_plan'): {
         // eslint-disable-next-line max-len
         const daysInUse = Math.floor((project.finished_at - project.payment_configured_at) / oneDay);
-        const initialDebt = (daysInUse - 3 - project.days_in_pause) * laterPlanPerDay;
+        // eslint-disable-next-line max-len
+        const initialDebt = (daysInUse - config.trialPeriodLaterPlan - project.days_in_pause) * laterPlanPerDay;
         project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
         project.debt = initialDebt <= 0 ? 0 : initialDebt;
         project.charge_flow_status = initialDebt <= 0 ? 'not_needed' : 'scheduled';
@@ -172,8 +173,8 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
 
     if (reason400) return res.status(400).send(reason400);
 
-    const charge_flow_started = await startChargeFlow(project);
-    res.send({ charge_flow_started });
+    await startChargeFlow(project, true);
+    res.sendStatus(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));
@@ -187,9 +188,16 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
       return res.status(400).send('Project already active');
     }
 
+    if (project.is_suspended) {
+      return res.status(403).send(
+        'Your project has been was suspended.'
+        + ' Please contact info@justearlybird.com to get support and resolve the situation.'
+        + ' We look forward to helping you with this.',
+      );
+    }
     switch (project.plan) {
       case ('later_plan'): {
-        project.days_in_pause += Math.floor((new Date() - project.last_paused_at) / oneDay);
+        project.days_in_pause += Math.floor((new Date() - project.last_paused_at || 0) / oneDay);
         break;
       }
       case ('now_plan'): {
@@ -203,7 +211,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
         return res.status(400).send(`Project has incorrect plan ${project.plan}`);
       }
     }
-
+    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = true;
     res.send(await project.save());
   } catch (err) {
@@ -236,7 +244,9 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
       }
     }
 
+    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = false;
+
     res.send(await project.save());
   } catch (err) {
     next(new Error(err));
