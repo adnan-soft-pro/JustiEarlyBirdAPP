@@ -128,8 +128,6 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       case ('now_plan'): {
         if (project.stripe_subscription_id) {
           await stripe.subscriptions.del(project.stripe_subscription_id);
-          project.plan = undefined;
-          project.stripe_subscription_id = undefined;
         } else {
           logger.warn(`Project ${project._id} doesn't have stripe_subscription_id`);
           res.status(500).send(`Project ${project._id} doesn't have stripe_subscription_id`);
