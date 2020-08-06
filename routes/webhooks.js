@@ -63,6 +63,7 @@ const stripeEventHandlers = {
     }
     project.is_payment_active = ['active', 'trialing'].includes(subscription.status);
     project.debt = ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15;
+    project.is_trialing = subscription.status === 'trialing';
     await project.save();
 
     res.sendStatus(200);

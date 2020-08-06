@@ -8,6 +8,7 @@ const oneDay = 24 * 60 * 60 * 1000;
 const trialPeriodLaterPlan = config.trialPeriodLaterPlan * oneDay;
 
 module.exports = async () => {
+  logger.info('increaseDebts started');
   const now = Date.now();
 
   const projects = await ProjectModel.find({
@@ -24,7 +25,7 @@ module.exports = async () => {
     async (project) => {
       try {
         if (project.payment_configured_at <= now - trialPeriodLaterPlan) {
-          project.initial_debt += config.pricePerDayLaterPlan;
+          project.initial_debt = (project.initial_debt || 0) + config.pricePerDayLaterPlan;
           project.debt = project.initial_debt;
         }
         project.last_debt_increased_at = now;
@@ -34,4 +35,5 @@ module.exports = async () => {
       }
     },
   );
+  logger.info(`increaseDebts processed ${projects.length} projects`);
 };
