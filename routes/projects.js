@@ -44,6 +44,10 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
     const projectUpd = { ...project._doc, ...req.body };
+    if (projectUpd.password) {
+      project.credentials = undefined;
+      project.save();
+    }
 
     if ((projectUpd.site_type !== project.site_type) || (projectUpd.url !== project.url)) {
       try {

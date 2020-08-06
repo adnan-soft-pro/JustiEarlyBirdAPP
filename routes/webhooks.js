@@ -5,7 +5,6 @@ const cors = require('cors');
 
 const config = require('../config').app;
 const logger = require('../helpers/logger');
-const ua = require('universal-analytics');
 const chargeForProject = require('../helpers/chargeForProject');
 
 const stripe = require('stripe')(config.stripeSecret);
