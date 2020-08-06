@@ -48,8 +48,6 @@ const stripeEventHandlers = {
       logger.warn(`Project's ${projectId} subscription ${oldSubscription} replaced with ${subscription.id}`);
     }
 
-    sendAnalytics('plan', 'Create', 'Create now plan');
-
     res.sendStatus(200);
   },
 
