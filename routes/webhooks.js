@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const config = require('../config').app;
 const logger = require('../helpers/logger');
+const ua = require('universal-analytics');
 const chargeForProject = require('../helpers/chargeForProject');
 
 const stripe = require('stripe')(config.stripeSecret);
@@ -12,6 +13,7 @@ const router = require('express').Router();
 
 const ProjectModel = require('../models/project');
 const UserModel = require('../models/user');
+const sendAnalytics = require('../helpers/googleAnalyticsSend');
 
 router.use(cors());
 
@@ -46,12 +48,15 @@ const stripeEventHandlers = {
       logger.warn(`Project's ${projectId} subscription ${oldSubscription} replaced with ${subscription.id}`);
     }
 
+    sendAnalytics('plan', 'Create', 'Create now plan');
+
     res.sendStatus(200);
   },
 
   // On now_plan subscription status changes
   'customer.subscription.updated': async (req, res) => {
     const subscription = req.body.data.object;
+
     const project = await ProjectModel.findOne({ stripe_subscription_id: subscription.id });
     if (!project) {
       logger.warn(`Project with subscription ${subscription.id} was not found`);
@@ -153,6 +158,7 @@ const stripeEventHandlers = {
 
     if (project.plan === 'now_plan') {
       await project.save();
+      sendAnalytics('Now Plan', 'Payment Success', 'Now Plan Payment Success');
       return res.sendStatus(200);
     }
 
@@ -165,6 +171,7 @@ const stripeEventHandlers = {
         project.plan = undefined;
         await project.save();
         logger.info(`Project ${projectId} is fully paid (/1)`);
+        sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
         break;
       }
       case ('/2'): {
@@ -172,6 +179,7 @@ const stripeEventHandlers = {
         await project.save();
         logger.info(`Project ${projectId} is partially paid (/2)`);
         await chargeForProject(project, user);
+        sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
         break;
       }
       case ('/4'): {
@@ -179,6 +187,7 @@ const stripeEventHandlers = {
           project.charge_flow_status = 'done';
           project.stripe_payment_method_id = '';
           project.plan = undefined;
+          sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
         }
         await project.save();
         logger.info(`Project ${projectId} is ${project.debt === 0 ? 'fully' : 'partially'} paid (/4)`);
@@ -207,7 +216,10 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
-    if (project.plan !== 'later_plan') return res.sendStatus(200);
+    if (project.plan !== 'later_plan') {
+      sendAnalytics('Now Plan', 'Payment Failed', 'Now Plan Payment Failed');
+      return res.sendStatus(200);
+    }
 
     const user = await UserModel.findById(project.user_id);
 
@@ -223,6 +235,7 @@ const stripeEventHandlers = {
         await project.save();
         logger.info(`/1 PaymentIntent for project ${projectId} failed`);
         await chargeForProject(project, user);
+        sendAnalytics('Later Plan', 'Payment Failed', 'Later Plan Payment Failed');
         break;
       }
       case ('/2'): {
@@ -230,11 +243,13 @@ const stripeEventHandlers = {
         await project.save();
         logger.info(`/2 PaymentIntent for project ${projectId} failed`);
         await chargeForProject(project, user);
+        sendAnalytics('Later Plan', 'Payment Failed', 'Later Plan Payment Failed');
         break;
       }
       case ('/4'): {
         await project.save();
         logger.info(`/4 PaymentIntent for project ${projectId} failed`);
+        sendAnalytics('Later Plan', 'Payment Failed', 'Later Plan Payment Failed');
         break;
       }
       default: {

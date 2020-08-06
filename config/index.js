@@ -13,6 +13,7 @@ module.exports = {
     pricePerDayLaterPlan: process.env.PRICE_PER_DAY_LATER_PLAN || 1500,
     emailFrom: process.env.EMAIL_FROM,
     sendgripApiKey: process.env.SENDGRID_API_KEY,
+    trackingId: process.env.TRACKINGID,
   },
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',
