@@ -74,6 +74,14 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
  */
 router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
+    if (req.project.is_trialing) {
+      if (req.project.plan === 'now_plan' || !req.project.plan) {
+        if (req.project.stripe_subscription_id) {
+          await stripe.subscriptions.del(req.project.stripe_subscription_id);
+        }
+      }
+    }
+
     await deleteProjectFromDynamo(req.params.id);
     await req.project.deleteOne();
 
@@ -120,6 +128,8 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       case ('now_plan'): {
         if (project.stripe_subscription_id) {
           await stripe.subscriptions.del(project.stripe_subscription_id);
+          project.plan = undefined;
+          project.stripe_subscription_id = undefined;
         } else {
           logger.warn(`Project ${project._id} doesn't have stripe_subscription_id`);
           res.status(500).send(`Project ${project._id} doesn't have stripe_subscription_id`);
