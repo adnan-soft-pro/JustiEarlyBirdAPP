@@ -84,13 +84,6 @@ router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
-/**
- * Endpoint: /projects
- * Method: GET
- * @function
- * @name getProjects
- * @return {Array}  projects
- */
 router.get('/', async (req, res, next) => {
   try {
     const { user } = req;
@@ -109,13 +102,13 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-const oneDay = 24 * 60 * 60 * 1000;
-const laterPlanPerDay = 15 * 100;
 router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
 
-    if (project.finished_at) return res.status(404).send('Project is already finished');
+    if (project.finished_at) {
+      return res.status(404).send('Project is already finished');
+    }
 
     project.finished_at = new Date();
     project.is_active = false;
@@ -135,16 +128,12 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       }
 
       case ('later_plan'): {
-        // eslint-disable-next-line max-len
-        const daysInUse = Math.floor((project.finished_at - project.payment_configured_at) / oneDay);
-        // eslint-disable-next-line max-len
-        const initialDebt = (daysInUse - config.trialPeriodLaterPlan - project.days_in_pause) * laterPlanPerDay;
-        project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
-        project.debt = initialDebt <= 0 ? 0 : initialDebt;
-        project.charge_flow_status = initialDebt <= 0 ? 'not_needed' : 'scheduled';
-        if (initialDebt <= 0) {
+        if (project.initialDebt <= 0) {
+          project.charge_flow_status = 'not_needed';
           project.plan = undefined;
           project.stripe_payment_method_id = undefined;
+        } else {
+          project.charge_flow_status = 'scheduled';
         }
         await project.save();
         break;
@@ -181,6 +170,7 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
+const oneDay = 24 * 60 * 60 * 1000;
 router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;

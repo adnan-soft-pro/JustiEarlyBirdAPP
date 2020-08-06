@@ -10,6 +10,7 @@ module.exports = {
     monitoringUrl: process.env.MONITORING_URL,
     nowPlanPriceId: process.env.NOW_PLAN_PRICE_ID,
     trialPeriodLaterPlan: process.env.TRIAL_PERIOD_LATER_PLAN || 3,
+    pricePerDayLaterPlan: process.env.PRICE_PER_DAY_LATER_PLAN || 1500,
     emailFrom: process.env.EMAIL_FROM,
     sendgripApiKey: process.env.SENDGRID_API_KEY,
   },
