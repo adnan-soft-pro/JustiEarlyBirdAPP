@@ -86,7 +86,7 @@ const stripeEventHandlers = {
 
     project.is_payment_active = false;
     project.stripe_subscription_id = '';
-    project.plan = '';
+    project.plan = undefined;
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
 
     await project.save();
