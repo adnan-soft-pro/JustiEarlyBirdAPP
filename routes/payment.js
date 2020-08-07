@@ -33,7 +33,10 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
       line_items: [{ price: config.nowPlanPriceId, quantity: 1 }],
       subscription_data: {
         trial_from_plan: true,
-        metadata: { projectId: project.id },
+        metadata: {
+          projectId: project.id,
+          projectName: project.display_name,
+        },
       },
       success_url: `${config.frontendURL}/myprojects`,
       cancel_url: `${config.frontendURL}/myprojects`,
@@ -64,7 +67,10 @@ router.post('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) 
       customer: user.stripe_id,
       client_reference_id: project.id,
       setup_intent_data: {
-        metadata: { projectId: project.id },
+        metadata: {
+          projectId: project.id,
+          projectName: project.display_name,
+        },
       },
       success_url: `${config.frontendURL}/myprojects`,
       cancel_url: `${config.frontendURL}/myprojects`,
@@ -92,7 +98,10 @@ router.put('/:project_id/later_plan', exist, ownerOnly, async (req, res, next) =
       customer: user.stripe_id,
       client_reference_id: project.id,
       setup_intent_data: {
-        metadata: { projectId: project.id },
+        metadata: {
+          projectId: project.id,
+          projectName: project.display_name,
+        },
       },
       success_url: `${config.frontendURL}/myprojects`,
       cancel_url: `${config.frontendURL}/myprojects`,
@@ -129,7 +138,10 @@ router.put('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) => 
       client_reference_id: project.id,
       line_items: [{ price: config.nowPlanPriceId, quantity: 1 }],
       subscription_data: {
-        metadata: { projectId: project.id },
+        metadata: {
+          projectId: project.id,
+          projectName: project.display_name,
+        },
         trial_end: trialEnd,
       },
       success_url: `${config.frontendURL}/myprojects`,
