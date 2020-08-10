@@ -141,10 +141,11 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       }
 
       case ('later_plan'): {
-        if (project.initialDebt <= 0) {
-          project.charge_flow_status = 'not_needed';
+        if (project.initial_debt <= 0) {
           project.plan = undefined;
           project.stripe_payment_method_id = undefined;
+          project.is_payment_active = false;
+          project.charge_flow_status = 'not_needed';
         } else {
           project.charge_flow_status = 'scheduled';
         }
