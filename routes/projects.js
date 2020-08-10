@@ -171,8 +171,6 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
 
     const reason400 = null
       || (project.plan !== 'later_plan' && "Project doesn't have later_plan");
-      // || (!project.finished_at && 'Project is not finished yet')
-      // || (project.charge_flow_status !== 'scheduled' && 'Charge flow is already started for this project');
 
     if (reason400) return res.status(400).send(reason400);
     if (project.finished_at) {

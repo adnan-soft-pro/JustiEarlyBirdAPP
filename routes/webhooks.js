@@ -159,6 +159,9 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
+    if (paymentIntent.amount_received === project.debt) {
+      project.initial_debt = 0;
+    }
     project.debt -= paymentIntent.amount_received;
 
     switch (project.charge_flow_status) {
@@ -192,12 +195,11 @@ const stripeEventHandlers = {
       }
       default: {
         logger.warn(`PaymentIntent ${paymentIntent.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
+        await project.save();
       }
     }
-    if (!project.charge_flow_status || project.charge_flow_status === 'not_needed') {
-      project.initial_debt -= paymentIntent.amount_received;
-      await project.save();
-    }
+    // if (!project.charge_flow_status || project.charge_flow_status === 'not_needed') {
+    // }
     res.sendStatus(200);
   },
 
