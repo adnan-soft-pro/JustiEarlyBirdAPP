@@ -194,7 +194,7 @@ const stripeEventHandlers = {
         logger.warn(`PaymentIntent ${paymentIntent.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
       }
     }
-    if (!project.charge_flow_status) {
+    if (!project.charge_flow_status || project.charge_flow_status === 'not_needed') {
       project.initial_debt -= paymentIntent.amount_received;
       await project.save();
     }
