@@ -151,7 +151,6 @@ const stripeEventHandlers = {
     }
 
     project.total_paid += paymentIntent.amount_received;
-    project.initial_debt -= paymentIntent.amount_received;
     project.last_charge_attempt_at = new Date();
 
     if (project.plan === 'now_plan') {
@@ -196,6 +195,7 @@ const stripeEventHandlers = {
       }
     }
     if (!project.charge_flow_status) {
+      project.initial_debt -= paymentIntent.amount_received;
       await project.save();
     }
     res.sendStatus(200);
