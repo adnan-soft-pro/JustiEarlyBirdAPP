@@ -19,9 +19,8 @@ module.exports = async (project, user = null, suspendChargeFlow = false) => {
 
   let chargeAmount = Math.floor(project.initial_debt / dividers[project.charge_flow_status]);
   if (chargeAmount > project.debt) chargeAmount = project.debt;
-
+  if (!project.finished_at) chargeAmount = project.debt;
   logger.info(`Attempt to charge for project ${project.id} (${project.charge_flow_status})`);
-
   try {
     await stripe.paymentIntents.create({
       customer: user.stripe_id,

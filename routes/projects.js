@@ -6,10 +6,10 @@ const router = require('express').Router();
 const logger = require('../helpers/logger');
 const { mapAsync } = require('../helpers/mapAsync');
 const config = require('../config/index').app;
-
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const startChargeFlow = require('../helpers/startChargeFlow');
 const validateProjectUrl = require('../helpers/validateProjectUrl');
+const chargeForProject = require('../helpers/chargeForProject');
 
 const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
@@ -17,6 +17,7 @@ const exist = exist_setIdKey('id');
 
 const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
+const UserModel = require('../models/user');
 const RewardChangeLogModel = require('../models/reward_change_log');
 const stripe = require('stripe')(config.stripeSecret);
 
@@ -168,13 +169,17 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
     const { project } = req;
 
     const reason400 = null
-      || (project.plan !== 'later_plan' && "Project doesn't have later_plan")
-      || (!project.finished_at && 'Project is not finished yet')
-      || (project.charge_flow_status !== 'scheduled' && 'Charge flow is already started for this project');
+      || (project.plan !== 'later_plan' && "Project doesn't have later_plan");
+      // || (!project.finished_at && 'Project is not finished yet')
+      // || (project.charge_flow_status !== 'scheduled' && 'Charge flow is already started for this project');
 
     if (reason400) return res.status(400).send(reason400);
-
-    await startChargeFlow(project, true);
+    if (project.finished_at) {
+      await startChargeFlow(project, true);
+    } else {
+      const user = await UserModel.findById(project.user_id);
+      await chargeForProject(project, user);
+    }
     res.sendStatus(200);
   } catch (err) {
     logger.error(err);

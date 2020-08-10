@@ -151,6 +151,7 @@ const stripeEventHandlers = {
     }
 
     project.total_paid += paymentIntent.amount_received;
+    project.initial_debt -= paymentIntent.amount_received;
     project.last_charge_attempt_at = new Date();
 
     if (project.plan === 'now_plan') {
@@ -193,6 +194,9 @@ const stripeEventHandlers = {
       default: {
         logger.warn(`PaymentIntent ${paymentIntent.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
       }
+    }
+    if (!project.charge_flow_status) {
+      await project.save();
     }
     res.sendStatus(200);
   },
@@ -253,6 +257,7 @@ const stripeEventHandlers = {
         logger.warn(`PaymentIntent ${paymentIntent.id} points to the project ${projectId} with charge_flow_status ${project.charge_flow_status}`);
       }
     }
+
     res.sendStatus(200);
   },
 
