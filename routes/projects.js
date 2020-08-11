@@ -101,10 +101,8 @@ router.get('/', async (req, res, next) => {
   try {
     const { user, query: { unpaid } } = req;
     const projectСondition = { user_id: user.id };
-    if (unpaid) projectСondition.debt = { $gte: 0 };
-
+    if (unpaid) projectСondition.debt = { $gt: 0 };
     let projects = await ProjectModel.find(projectСondition);
-
     projects = projects.map((project) => project._doc);
 
     await mapAsync(projects, async (project) => {
