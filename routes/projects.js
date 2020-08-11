@@ -99,8 +99,12 @@ router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { user } = req;
-    let projects = await ProjectModel.find({ user_id: user.id });
+    const { user, query: { unpaid } } = req;
+    const projectСondition = { user_id: user.id };
+    if (unpaid) projectСondition.debt = { $gte: 0 };
+
+    let projects = await ProjectModel.find(projectСondition);
+
     projects = projects.map((project) => project._doc);
 
     await mapAsync(projects, async (project) => {
