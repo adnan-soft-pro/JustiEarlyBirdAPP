@@ -77,5 +77,6 @@ app.use((err, req, res, next) => {
 });
 
 require('./jobs').start();
+require('./events').start();
 
 module.exports = app;
