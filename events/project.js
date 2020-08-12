@@ -1,6 +1,8 @@
+/* eslint-disable no-console */
+/* eslint-disable import/order */
 /* eslint-disable no-underscore-dangle */
-const stripe = require('stripe')(config.stripeSecret);
 const config = require('../config/index').app;
+const stripe = require('stripe')(config.stripeSecret);
 const ProjectModel = require('../models/project');
 
 module.exports = () => {
