@@ -1,5 +1,4 @@
 // Npm modules
-require('dotenv').config({ path: './.env' });
 const express = require('express');
 const bodyParser = require('body-parser');
 

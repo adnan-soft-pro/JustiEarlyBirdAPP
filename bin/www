@@ -3,98 +3,102 @@
 /**
  * Module dependencies.
  */
-const http = require('http');
-const https = require('https');
-const debug = require('debug')('nodepad:server');
-const fs = require('fs');
-const app = require('../app');
-const initSockets = require('../sockets');
+require('dotenv').config({ path: `${__dirname}/../.env` });
 const { getEnvsFromParameterStore } = require('../config');
 const logger = require('../helpers/logger');
 /**
  * Get port from environment and store in Express.
  */
-function normalizePort(val) {
-  const port = parseInt(val, 10);
-  if (Number.isNaN(port)) {
-    // named pipe
-    return val;
+(async () => {
+
+  const { recievedParams, invalidParams } = await getEnvsFromParameterStore();
+  logger.debug(`Recieved parameters from Parameter Store: ${recievedParams.join(',\n')}`);
+  logger.debug(`Invalid parameters: ${invalidParams.join(',\n')}`);
+
+  const http = require('http');
+  const https = require('https');
+  const debug = require('debug')('nodepad:server');
+  const fs = require('fs');
+  const app = require('../app');
+  const initSockets = require('../sockets');
+
+  function normalizePort(val) {
+    const port = parseInt(val, 10);
+    if (Number.isNaN(port)) {
+      // named pipe
+      return val;
+    }
+    if (port >= 0) {
+      // port number
+      return port;
+    }
+    return false;
   }
-  if (port >= 0) {
-    // port number
-    return port;
-  }
-  return false;
-}
-const httpPort = normalizePort(process.env.HTTP_PORT || '8000');
-/**
- * Create HTTP server.
- */
-const httpServer = http.createServer(app);
-/**
- * Event listener for HTTP server "error" event.
- */
-function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
-  const bind = typeof httpPort === 'string'
-    ? `Pipe ${httpPort}`
-    : `Port ${httpPort}`;
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(`${bind} requires elevated privileges`);
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(`${bind} is already in use`);
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
-}
-/**
- * Event listener for HTTP server "listening" event.
- */
-function onListening() {
-  const addr = httpServer.address();
-  const bind = typeof addr === 'string'
-    ? `pipe ${addr}`
-    : `port ${addr.port}`;
-  debug(`Listening on ${bind}`);
-  console.log(`HTTP server listening on port ${addr.port}`);
-}
-/**
-   * Listen on provided port, on all network interfaces.
+  const httpPort = normalizePort(process.env.HTTP_PORT || '8000');
+  /**
+   * Create HTTP server.
    */
-initSockets(httpServer);
-httpServer.listen(httpPort);
-httpServer.on('error', onError);
-httpServer.on('listening', onListening);
-if (process.env.HTTPS) {
-  const key = fs.readFileSync(process.env.PRIV_KEY_PATH);
-  const cert = fs.readFileSync(process.env.CERTS_PATH);
-  const httpsPort = normalizePort(process.env.HTTPS_PORT || '8080');
-  const httpsServer = https.createServer({ key, cert }, app);
-  // eslint-disable-next-line no-inner-declarations
-  function onListeningHttps() {
-    const addr = httpsServer.address();
+  const httpServer = http.createServer(app);
+  /**
+   * Event listener for HTTP server "error" event.
+   */
+  function onError(error) {
+    if (error.syscall !== 'listen') {
+      throw error;
+    }
+    const bind = typeof httpPort === 'string'
+      ? `Pipe ${httpPort}`
+      : `Port ${httpPort}`;
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+      case 'EACCES':
+        console.error(`${bind} requires elevated privileges`);
+        process.exit(1);
+        break;
+      case 'EADDRINUSE':
+        console.error(`${bind} is already in use`);
+        process.exit(1);
+        break;
+      default:
+        throw error;
+    }
+  }
+  /**
+   * Event listener for HTTP server "listening" event.
+   */
+  function onListening() {
+    const addr = httpServer.address();
     const bind = typeof addr === 'string'
       ? `pipe ${addr}`
       : `port ${addr.port}`;
     debug(`Listening on ${bind}`);
-    console.log(`HTTPS server listening on port ${addr.port}`);
+    console.log(`HTTP server listening on port ${addr.port}`);
   }
-  initSockets(httpsServer);
-  httpsServer.listen(httpsPort);
-  httpsServer.on('error', onError);
-  httpsServer.on('listening', onListeningHttps);
-}
+  /**
+     * Listen on provided port, on all network interfaces.
+     */
+  initSockets(httpServer);
+  httpServer.listen(httpPort);
+  httpServer.on('error', onError);
+  httpServer.on('listening', onListening);
+  if (process.env.HTTPS) {
+    const key = fs.readFileSync(process.env.PRIV_KEY_PATH);
+    const cert = fs.readFileSync(process.env.CERTS_PATH);
+    const httpsPort = normalizePort(process.env.HTTPS_PORT || '8080');
+    const httpsServer = https.createServer({ key, cert }, app);
+    // eslint-disable-next-line no-inner-declarations
+    function onListeningHttps() {
+      const addr = httpsServer.address();
+      const bind = typeof addr === 'string'
+        ? `pipe ${addr}`
+        : `port ${addr.port}`;
+      debug(`Listening on ${bind}`);
+      console.log(`HTTPS server listening on port ${addr.port}`);
+    }
+    initSockets(httpsServer);
+    httpsServer.listen(httpsPort);
+    httpsServer.on('error', onError);
+    httpsServer.on('listening', onListeningHttps);
+  }
 
-(async () => {
-  const { recievedParams, invalidParams } = await getEnvsFromParameterStore();
-  logger.debug(`Recieved parameters from Parameter Store: ${recievedParams.join(',\n')}`);
-  logger.debug(`Invalid parameters: ${invalidParams.join(',\n')}`);
 })();

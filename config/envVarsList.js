@@ -1,6 +1,7 @@
 const envVarsFullList = [
   'DB_URL',
-  'PORT',
+  'HTTP_PORT',
+  'HTTPS_PORT',
   'STRIPE_SECRET',
   'FRONTEND_URL',
   'TOKEN_SECRET',
@@ -13,6 +14,9 @@ const envVarsFullList = [
   'TRACKINGID',
   'AWS_REGION',
   'DYNAMO_DB',
+  'PRIV_KEY_PATH',
+  'CERTS_PATH',
+  'HTTPS',
 ];
 
 const productionOnly = [
