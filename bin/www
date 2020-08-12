@@ -9,6 +9,8 @@ const debug = require('debug')('nodepad:server');
 const fs = require('fs');
 const app = require('../app');
 const initSockets = require('../sockets');
+const { getEnvsFromParameterStore } = require('../config');
+const logger = require('../helpers/logger');
 /**
  * Get port from environment and store in Express.
  */
@@ -65,8 +67,8 @@ function onListening() {
   console.log(`HTTP server listening on port ${addr.port}`);
 }
 /**
- * Listen on provided port, on all network interfaces.
- */
+   * Listen on provided port, on all network interfaces.
+   */
 initSockets(httpServer);
 httpServer.listen(httpPort);
 httpServer.on('error', onError);
@@ -90,3 +92,9 @@ if (process.env.HTTPS) {
   httpsServer.on('error', onError);
   httpsServer.on('listening', onListeningHttps);
 }
+
+(async () => {
+  const { recievedParams, invalidParams } = await getEnvsFromParameterStore();
+  logger.debug(`Recieved parameters from Parameter Store: ${recievedParams.join(',\n')}`);
+  logger.debug(`Invalid parameters: ${invalidParams.join(',\n')}`);
+})();
