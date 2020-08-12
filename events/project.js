@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
-const config = require('../config/index').app;
 const stripe = require('stripe')(config.stripeSecret);
+const config = require('../config/index').app;
 const ProjectModel = require('../models/project');
 
 module.exports = () => {
