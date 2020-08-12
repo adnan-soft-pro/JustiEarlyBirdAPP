@@ -99,10 +99,20 @@ router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
 
 router.get('/', async (req, res, next) => {
   try {
-    const { user, query: { unpaid } } = req;
+    const { user, query: { unpaid, limit, page } } = req;
     const projectСondition = { user_id: user.id };
     if (unpaid) projectСondition.debt = { $gt: 0 };
-    let projects = await ProjectModel.find(projectСondition);
+
+    const countProjects = await ProjectModel
+      .find(projectСondition)
+      .count()
+      .exec();
+    let projects = await ProjectModel
+      .find(projectСondition)
+      .sort({ createdAt: -1 })
+      .skip((+page - 1) * (+limit))
+      .limit(+limit)
+      .exec();
     projects = projects.map((project) => project._doc);
 
     await mapAsync(projects, async (project) => {
@@ -110,7 +120,7 @@ router.get('/', async (req, res, next) => {
       project.rewards = await RewardModel.find({ project_id: project._id });
     });
 
-    res.send(projects);
+    res.send({ countProjects, projects });
   } catch (err) {
     logger.error(err);
     next(new Error(err));
