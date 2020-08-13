@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 /* eslint-disable no-underscore-dangle */
 const config = require('../config/index').app;
 const stripe = require('stripe')(config.stripeSecret);
