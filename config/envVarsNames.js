@@ -1,11 +1,10 @@
-const envVarsFullList = [
+module.exports = [
   'DB_URL',
   'HTTP_PORT',
   'HTTPS_PORT',
   'STRIPE_SECRET',
   'FRONTEND_URL',
   'TOKEN_SECRET',
-  'MONITORING_URL',
   'NOW_PLAN_PRICE_ID',
   'TRIAL_PERIOD_LATER_PLAN',
   'PRICE_PER_DAY_LATER_PLAN',
@@ -19,8 +18,8 @@ const envVarsFullList = [
   'HTTPS',
 ];
 
-const productionOnly = [
-  'MONITORING_URL',
-];
-
-module.exports = { envVarsFullList, productionOnly };
+if (process.NODE_ENV === 'production') {
+  module.exports.push(...[
+    'MONITORING_URL',
+  ]);
+}

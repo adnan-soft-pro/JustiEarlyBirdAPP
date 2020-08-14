@@ -1,14 +1,23 @@
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-continue */
-/* eslint-disable no-undef */
-/* eslint-disable no-console */
-/* eslint-disable no-multi-assign */
+const { getParamsFromParameterStore } = require('../helpers/parameterStore');
+const { mapAsync } = require('../helpers/mapAsync');
+const logger = require('../helpers/logger');
 
-const { getParamsListFromParameterStore } = require('../helpers/parameterStore');
-const { envVarsFullList, productionOnly } = require('./envVarsList');
+const envVarsNames = require('./envVarsNames');
 
-const getConfig = ()/* : Object */ => ({
+const defaultConfig = {
+  app: {
+    port: 8000,
+    frontendURL: 'http://localhost:3000',
+    trialPeriodLaterPlan: 3,
+    pricePerDayLaterPlan: 1500,
+  },
+  aws: {
+    region: 'us-east-1',
+    dynamoDBName: 'test_db',
+  },
+};
+
+const getConfig = () => ({
   database: {
     db_url: process.env.DB_URL,
   },
@@ -29,80 +38,64 @@ const getConfig = ()/* : Object */ => ({
     region: process.env.AWS_REGION,
     dynamoDBName: process.env.DYNAMO_DB,
   },
-
 });
 
-const config = getConfig();
-const defaultConfig = {
-  database: {
-  },
-  app: {
-    port: 3000,
-    stripeSecret: '',
-    frontendURL: 'http://localhost:3000',
-    trialPeriodLaterPlan: 3,
-    pricePerDayLaterPlan: 1500,
-  },
-  aws: {
-    region: 'us-east-1',
-    dynamoDBName: 'test_db',
-  },
-};
+const deepMerge = (target, source, override = false) => {
+  const nestStack = [[target, source]];
 
-let requiredParams = [];
-let recievedParams = [];
-let invalidParams = [];
-let paramsFromParameterStore = [];
+  while (nestStack.length) {
+    const [currTarget, currSource] = nestStack.pop();
 
-const recieveParams = async (varName) => {
-  paramsFromParameterStore = await getParamsListFromParameterStore(requiredParams);
-  recievedParams = [...recievedParams, ...paramsFromParameterStore.recievedParams];
-  invalidParams = [...invalidParams, ...paramsFromParameterStore.invalidParams];
-  requiredParams = [varName];
-};
-
-const getEnvsFromParameterStore = async () => {
-  console.time('getEnvsFromParameterStore');
-  requiredParams = [];
-  recievedParams = [];
-  invalidParams = [];
-  paramsFromParameterStore = [];
-  for (const varName of envVarsFullList) {
-    if (process.env[varName] !== undefined) continue;
-    if (requiredParams.length < 10) {
-      requiredParams.push(varName);
-      continue;
-    }
-    await recieveParams(varName);
-  }
-  if (requiredParams.length) {
-    await recieveParams();
-  }
-
-  if (process.env.NODE_ENV !== 'production') {
-    invalidParams = invalidParams.filter((param) => !productionOnly.includes(param.substring(param.lastIndexOf('/') + 1)));
-  }
-
-  for (const param of recievedParams) {
-    const paramName = param.name.substring(param.name.lastIndexOf('/') + 1);
-    process.env[paramName] = param.value;
-  }
-
-  const newConfig = getConfig();
-  const copyKeys = (target, source, defaultSource) => {
-    for (const key in target) {
-      if (target[key] === undefined) target[key] = source[key] || defaultSource[key];
-      else if ((typeof target[key]) === 'object' && !Array.isArray(target[key])) {
-        copyKeys(target[key], source[key], defaultSource[key]);
+    Object.entries(currSource).forEach(([key, value]) => {
+      if (
+        typeof currTarget[key] === 'object' && !Array.isArray(currTarget[key])
+        && typeof value === 'object' && !Array.isArray(value)
+      ) {
+        nestStack.push([currTarget[key], value]);
+      } else if (currTarget[key] === undefined || (override && value !== undefined)) {
+        currTarget[key] = value;
       }
-    }
-  };
-  copyKeys(config, newConfig, defaultConfig);
-  console.timeEnd('getEnvsFromParameterStore');
-  config.receivedEnvsFromParameterStore = true;
-  return { recievedParams: recievedParams.map((param) => param.name), invalidParams };
+    });
+  }
+
+  return target;
 };
 
-config.getEnvsFromParameterStore = getEnvsFromParameterStore;
+const config = deepMerge(getConfig(), defaultConfig);
+
+config.getEnvsFromParameterStore = async () => {
+  const recievedParams = [];
+  const invalidParams = [];
+
+  // Splitting env variables' names into batches of the size of 10
+  const envVarNamesBatches = envVarsNames
+    .filter((varName) => !(varName in process.env))
+    .reduce((batches, varName, index) => {
+      const batchIndex = Math.floor(index / 10);
+      if (!batches[batchIndex]) batches.push([]);
+      batches[batchIndex].push(varName);
+      return batches;
+    }, []);
+
+  await mapAsync(envVarNamesBatches, async (namesBatch) => {
+    try {
+      const parametersBatch = await getParamsFromParameterStore(namesBatch);
+      recievedParams.push(...parametersBatch.recievedParams);
+      invalidParams.push(...parametersBatch.invalidParams);
+    } catch (err) {
+      logger.error(`Error on retrieving paremeters from Parameter Store: ${err.message}`);
+    }
+  });
+
+  recievedParams.forEach((p) => { process.env[p.name.replace(/^\/[^/]+\//, '')] = p.value; });
+
+  deepMerge(config, getConfig(), true);
+  config.receivedEnvsFromParameterStore = true;
+
+  return {
+    recievedParams: recievedParams.map((p) => p.name),
+    invalidParams,
+  };
+};
 
 module.exports = config;
