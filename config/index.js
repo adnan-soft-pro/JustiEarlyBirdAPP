@@ -28,8 +28,8 @@ const getConfig = () => ({
     jwtSecret: process.env.TOKEN_SECRET,
     monitoringUrl: process.env.MONITORING_URL,
     nowPlanPriceId: process.env.NOW_PLAN_PRICE_ID,
-    trialPeriodLaterPlan: process.env.TRIAL_PERIOD_LATER_PLAN,
-    pricePerDayLaterPlan: process.env.PRICE_PER_DAY_LATER_PLAN,
+    trialPeriodLaterPlan: +process.env.TRIAL_PERIOD_LATER_PLAN,
+    pricePerDayLaterPlan: +process.env.PRICE_PER_DAY_LATER_PLAN,
     emailFrom: process.env.EMAIL_FROM,
     sendgripApiKey: process.env.SENDGRID_API_KEY,
     trackingId: process.env.TRACKINGID,
@@ -52,7 +52,7 @@ const deepMerge = (target, source, override = false) => {
         && typeof value === 'object' && !Array.isArray(value)
       ) {
         nestStack.push([currTarget[key], value]);
-      } else if (currTarget[key] === undefined || (override && value !== undefined)) {
+      } else if ([undefined, NaN].includes(currTarget[key]) || (override && value !== undefined)) {
         currTarget[key] = value;
       }
     });
