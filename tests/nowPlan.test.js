@@ -1,49 +1,29 @@
+/* eslint-disable import/order */
+/* eslint-disable no-underscore-dangle */
 const request = require('supertest');
 const app = require('../app');
 const config = require('../config').app;
 const stripe = require('stripe')(config.stripeSecret);
+const ProjectModel = require('../models/project');
+const UserModel = require('../models/user');
+const authUser = require('./helpers/authUser');
 
+// eslint-disable-next-line no-unused-vars
 const server = request(app);
 
-const aQuestionId = '5f3101adce4dd22b78225f8e';
+let user; let header; let
+  project;
 
-// test('get /user/:id', async (done) => {
-//   jest.setTimeout(30000);
-//   server
-//   // /questions/5c7899a24552624a5b9c7f35?_method=DELETE
-//     .get(`/user/${aQuestionId}`)
-//     .expect(200);
-// });
-let user;
-let header;
-let project;
-// describe('Sign in', () => {
-//   it('should create a new user', async () => {
-//     const res = await request(app)
-//       .post('/auth/register')
-//       .send({
-//         email: 'jest@jest.com',
-//         password: 'test',
-//         fullname: 'jest test',
-//       });
-//     console.log('signin', res.body);
-//     user = res.body;
-//     expect(res.body.email).toEqual('jest@jest.com');
-//   });
-// });
-
-describe('login', () => {
-  it('should login user', async () => {
-    const res = await request(app)
-      .post('/auth/login')
-      .send({
-        password: 'test',
-        email: 'jest@jest.com',
-      });
-    header = res.header.authorization;
-    user = res.body;
-    expect(res.statusCode).toEqual(200);
-  });
+afterAll(async () => {
+  await ProjectModel.deleteMany({});
+  await UserModel.deleteMany({});
+});
+beforeAll(async () => {
+  await ProjectModel.deleteMany({});
+  await UserModel.deleteMany({});
+  const currentUser = await authUser();
+  header = currentUser.headers.authorization;
+  user = currentUser.data;
 });
 
 describe('Create project', () => {
@@ -66,7 +46,7 @@ describe('Create project', () => {
 
 describe('Create now plan', () => {
   it('should create  now plan', async () => {
-    const nowPlanId = 'price_1HCREbGWiMg5OKtoC7uzsSe8';
+    const nowPlanId = config.nowPlanPriceId;
     const paymentMethod = await stripe.paymentMethods.create({
       type: 'card',
       card: {
@@ -77,12 +57,12 @@ describe('Create now plan', () => {
       },
     });
 
-    const attach = await stripe.paymentMethods.attach(
+    await stripe.paymentMethods.attach(
       paymentMethod.id,
       { customer: user.stripe_id },
     );
 
-    const subscription = await stripe.subscriptions.create({
+    await stripe.subscriptions.create({
       customer: user.stripe_id,
       items: [
         { price: nowPlanId },
@@ -99,24 +79,32 @@ describe('Create now plan', () => {
   });
 });
 
+const timeout = (ms) => new Promise((res) => setTimeout(res, ms));
+
 describe('Update project', () => {
   it('should update project', async () => {
     const res = await request(app)
       .put(`/projects/${project._id}`)
       .send({
         project,
+        // stripe_subscription_id: payentId,
+        // payment_configured_at: new Date(),
+        // plan: 'now_plan',
         is_payment_active: true,
         is_trialing: false,
-        plan: 'now_plan',
+        // finished_at: undefined,
       })
       .set({ authorization: header });
-    // console.log(res);
+    await timeout(4000);
     expect(res.statusCode).toEqual(200);
+
+    // console.log(res);
   });
 });
 
 describe('Get project', () => {
   it('should get project by id', async () => {
+    // jest.setTimeout(80000);
     const res = await request(app)
       .get(`/projects/${project._id}`)
       .set({ authorization: header });
@@ -126,17 +114,19 @@ describe('Get project', () => {
   });
 });
 
-jest.setTimeout(60000);
-
 describe('finish subscription', () => {
   it('should finish subscription', async () => {
+    // console.log('start');
+    // await timeout(12000);
+
+    // console.log('finish');
     const res = await request(app)
       .post(`/projects/${project._id}/finish`)
       .set({ authorization: header });
     expect(res.statusCode).toEqual(200);
   });
 });
-jest.setTimeout(60000);
+
 describe('Delete project', () => {
   it('should delete project', async () => {
     const res = await request(app)
@@ -147,25 +137,12 @@ describe('Delete project', () => {
   });
 });
 
-// describe('get Endpoints', () => {
-//   it('should get a user', async () => {
-//     const res = await request(app)
-//       .get(`/admin/user/${aQuestionId}`);
-//     expect(res.statusCode).toEqual(200);
-//   });
+describe('Delete user', () => {
+  it('should delete user', async () => {
+    const res = await request(app)
+      .delete(`/users/${user._id}`)
+      .set({ authorization: header });
 
-//   // expect(res.body).toHaveProperty('post')
-// });
-// describe('Pay', () => {
-//   it('should finish subscription', async () => {
-//     const res = await request(app)
-//       .post('/projects/5f33a89a2624572f87bd8a73/finish')
-//       .set({ authorization: header });
-//     // console.log(res);
-//     console.log(res);
-//     expect(res.statusCode).toEqual(200);
-//   });
-// });
-
-// Delete route
-// DELETE /questions/:qID
+    expect(res.statusCode).toEqual(200);
+  });
+});
