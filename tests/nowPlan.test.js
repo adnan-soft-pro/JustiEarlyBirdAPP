@@ -38,7 +38,6 @@ describe('Create project', () => {
       })
       .set({ authorization: header });
     project = res.body;
-    // console.log(res);
     expect(res.statusCode).toEqual(200);
   });
 });
