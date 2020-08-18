@@ -9,7 +9,6 @@ const UserModel = require('../models/user');
 const authUser = require('./helpers/authUser');
 
 require('../bin/www');
-// eslint-disable-next-line no-unused-vars
 
 let user;
 let header;
@@ -44,6 +43,8 @@ describe('Create project', () => {
   });
 });
 
+const timeout = (ms) => new Promise((res) => setTimeout(res, ms));
+
 describe('Create now plan', () => {
   it('should create  now plan', async () => {
     const nowPlanId = config.nowPlanPriceId;
@@ -60,6 +61,7 @@ describe('Create now plan', () => {
     await stripe.paymentMethods.attach(
       paymentMethod.id,
       { customer: user.stripe_id },
+
     );
 
     await stripe.subscriptions.create({
@@ -71,46 +73,26 @@ describe('Create now plan', () => {
       trial_from_plan: false,
       metadata: {
         projectId: project._id,
-        projectName: project.display_name,
       },
     });
 
+    await timeout(1000);
     expect(200).toEqual(200);
   });
 });
 
-const timeout = (ms) => new Promise((res) => setTimeout(res, ms));
-
 describe('Update project', () => {
   it('should update project', async () => {
+    await timeout(4000);
     const res = await request(app)
       .put(`/projects/${project._id}`)
       .send({
         project,
-        // stripe_subscription_id: payentId,
-        // payment_configured_at: new Date(),
-        // plan: 'now_plan',
         is_payment_active: true,
         is_trialing: false,
-        // finished_at: undefined,
       })
       .set({ authorization: header });
-    await timeout(4000);
-    expect(res.statusCode).toEqual(200);
-
-    // console.log(res);
-  });
-});
-
-describe('Get project', () => {
-  it('should get project by id', async () => {
-    // jest.setTimeout(80000);
-    const res = await request(app)
-      .get(`/projects/${project._id}`)
-      .set({ authorization: header });
-    project = res.body;
-
-    expect(res.statusCode).toEqual(200);
+    expect(res.body.plan).toEqual('now_plan');
   });
 });
 
@@ -120,6 +102,7 @@ describe('finish subscription', () => {
       .post(`/projects/${project._id}/finish`)
       .set({ authorization: header });
     expect(res.statusCode).toEqual(200);
+    await timeout(1000);
   });
 });
 

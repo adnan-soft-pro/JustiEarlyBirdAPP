@@ -40,11 +40,11 @@ describe('Create project', () => {
       })
       .set({ authorization: header });
     project = res.body;
-    // console.log(res);
     expect(res.statusCode).toEqual(200);
   });
 });
 
+const timeout = (ms) => new Promise((res) => setTimeout(res, ms));
 describe('Create later plan', () => {
   it('should create  later plan', async () => {
     const paymentMethod = await stripe.paymentMethods.create({
@@ -68,8 +68,11 @@ describe('Create later plan', () => {
       customer: user.stripe_id,
       usage: 'off_session',
       payment_method: payentId,
+      metadata: {
+        projectId: project._id,
+      },
     });
-
+    await timeout(2000);
     expect(200).toEqual(200);
   });
 });
@@ -80,27 +83,12 @@ describe('Update later plan project', () => {
       .put(`/projects/${project._id}`)
       .send({
         project,
-        stripe_payment_method_id: payentId,
-        plan: 'later_plan',
-        is_payment_active: true,
         is_trialing: false,
         initial_debt: 1500,
         debt: 1500,
-        payment_configured_at: new Date(),
       })
       .set({ authorization: header });
-    // console.log(res);
-    expect(res.statusCode).toEqual(200);
-  });
-});
-
-describe('Get project', () => {
-  it('should get project by id', async () => {
-    const res = await request(app)
-      .get(`/projects/${project._id}`)
-      .set({ authorization: header });
-    project = res.body;
-
+    await timeout(1000);
     expect(res.statusCode).toEqual(200);
   });
 });
@@ -110,7 +98,8 @@ describe('finish later plan subscription', () => {
     const res = await request(app)
       .post(`/projects/${project._id}/finish`)
       .set({ authorization: header });
-    expect(res.statusCode).toEqual(200);
+
+    expect(res.body.charge_flow_status).toEqual('scheduled');
   });
 });
 
@@ -120,6 +109,7 @@ describe('pay later plan subscription', () => {
       .post(`/projects/${project._id}/pay`)
       .set({ authorization: header });
     expect(res.statusCode).toEqual(200);
+    await timeout(2000);
   });
 });
 

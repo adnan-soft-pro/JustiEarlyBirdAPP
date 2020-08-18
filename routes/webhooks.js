@@ -266,6 +266,14 @@ const stripeEventHandlers = {
   'payment_intent.created': async (req, res) => {
     try {
       const paymentIntent = req.body.data.object;
+      if (paymentIntent.invoice) {
+        const invoice = await stripe.invoices.retrieve(
+          paymentIntent.invoice,
+          { expand: ['subscription'] },
+        );
+        paymentIntent.metadata = invoice.subscription.metadata;
+      }
+
       const { projectId } = paymentIntent.metadata;
 
       if (!projectId) {
