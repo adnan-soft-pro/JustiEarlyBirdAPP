@@ -8,12 +8,12 @@ const ProjectModel = require('../models/project');
 const UserModel = require('../models/user');
 const authUser = require('./helpers/authUser');
 
+require('../bin/www');
 // eslint-disable-next-line no-unused-vars
-const server = request(app);
 
-let user; let header; let
-  project;
-
+let user;
+let header;
+let project;
 afterAll(async () => {
   await ProjectModel.deleteMany({});
   await UserModel.deleteMany({});
@@ -116,10 +116,6 @@ describe('Get project', () => {
 
 describe('finish subscription', () => {
   it('should finish subscription', async () => {
-    // console.log('start');
-    // await timeout(12000);
-
-    // console.log('finish');
     const res = await request(app)
       .post(`/projects/${project._id}/finish`)
       .set({ authorization: header });

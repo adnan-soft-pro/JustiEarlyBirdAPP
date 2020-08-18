@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nodemon ./bin/www",
     "eslint": "npx eslint .",
-    "test": "jest --testEnvironment=node --verbose --forceExit --watchAll --maxWorkers=1",
+    "test": "jest  --setupFiles dotenv/config --testEnvironment=node --verbose --forceExit --watchAll --maxWorkers=1 . dotenv_config_path=.test.env",
     "test:watch": "jest --watch"
   },
   "pre-push": [
