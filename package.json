@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nodemon ./bin/www",
     "eslint": "npx eslint .",
-    "test": "jest  --setupFiles dotenv/config --testEnvironment=node --verbose --forceExit --watchAll --maxWorkers=1 . dotenv_config_path=.test.env",
+    "test": "jest  --setupFiles dotenv/config --testEnvironment=node --maxWorkers=1  --forceExit . dotenv_config_path=.test.env",
     "test:watch": "jest --watch"
   },
   "pre-push": [
@@ -32,6 +32,7 @@
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "is-port-reachable": "^3.0.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.9.19",
     "node-cron": "^2.0.3",

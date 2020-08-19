@@ -1,6 +1,7 @@
 /* eslint-disable import/order */
 /* eslint-disable no-underscore-dangle */
 const request = require('supertest');
+const isPortReachable = require('is-port-reachable');
 const app = require('../app');
 const config = require('../config').app;
 const stripe = require('stripe')(config.stripeSecret);
@@ -20,6 +21,8 @@ afterAll(async () => {
 });
 
 beforeAll(async () => {
+  // eslint-disable-next-line global-require
+  if (!await isPortReachable(config.port, { host: 'localhost' })) require('../bin/www');
   await ProjectModel.deleteMany({});
   await UserModel.deleteMany({});
   const currentUser = await authUser();
