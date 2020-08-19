@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon ./bin/www",
-    "eslint": "npx eslint ."
+    "eslint": "npx eslint .",
+    "test": "jest  --setupFiles dotenv/config --testEnvironment=node --maxWorkers=1  --forceExit . dotenv_config_path=.test.env",
+    "test:watch": "jest --watch"
   },
   "pre-push": [
     "eslint"
@@ -30,6 +32,7 @@
     "debug": "^4.1.1",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
+    "is-port-reachable": "^3.0.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^5.9.19",
     "node-cron": "^2.0.3",
@@ -42,9 +45,12 @@
     "uuid": "^8.2.0"
   },
   "devDependencies": {
+    "@shelf/jest-mongodb": "^1.2.2",
     "eslint": "^7.2.0",
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-plugin-import": "^2.21.2",
-    "pre-push": "^0.1.1"
+    "jest": "^26.3.0",
+    "pre-push": "^0.1.1",
+    "supertest": "^4.0.2"
   }
 }
