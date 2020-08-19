@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /* eslint-disable import/order */
 /* eslint-disable no-underscore-dangle */
 const config = require('../config/index').app;
