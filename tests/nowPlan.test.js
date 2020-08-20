@@ -18,12 +18,12 @@ afterAll(async () => {
 });
 beforeAll(async () => {
   // eslint-disable-next-line global-require
-  if (!await isPortReachable(config.port, { host: 'localhost' })) require('../bin/www');
+  if (!await isPortReachable(process.env.HTTP_PORT, { host: 'localhost' })) require('../bin/www');
   await ProjectModel.deleteMany({});
   await UserModel.deleteMany({});
   const currentUser = await authUser();
   header = currentUser.headers.authorization;
-  user = currentUser.data;
+  user = currentUser.body;
 });
 
 describe('Create project', () => {

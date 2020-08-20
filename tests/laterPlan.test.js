@@ -9,9 +9,6 @@ const ProjectModel = require('../models/project');
 const UserModel = require('../models/user');
 const authUser = require('./helpers/authUser');
 
-// eslint-disable-next-line no-unused-vars
-const server = request(app);
-
 let user; let header; let project; let
   payentId;
 
@@ -22,12 +19,12 @@ afterAll(async () => {
 
 beforeAll(async () => {
   // eslint-disable-next-line global-require
-  if (!await isPortReachable(config.port, { host: 'localhost' })) require('../bin/www');
+  if (!await isPortReachable(process.env.HTTP_PORT, { host: 'localhost' })) require('../bin/www');
   await ProjectModel.deleteMany({});
   await UserModel.deleteMany({});
   const currentUser = await authUser();
   header = currentUser.headers.authorization;
-  user = currentUser.data;
+  user = currentUser.body;
 });
 
 describe('Create project', () => {
@@ -101,7 +98,6 @@ describe('finish later plan subscription', () => {
     const res = await request(app)
       .post(`/projects/${project._id}/finish`)
       .set({ authorization: header });
-
     expect(res.body.charge_flow_status).toEqual('scheduled');
   });
 });

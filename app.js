@@ -40,7 +40,7 @@ db.mongoose.connect(db.url, {
 })
   .then(() => {
     // eslint-disable-next-line no-console
-    console.log('Connected to the Database!');
+    console.log('Connected to the Database! Db name: ', db.url.split('/')[3]);
   })
   .catch((err) => {
     // eslint-disable-next-line no-console
