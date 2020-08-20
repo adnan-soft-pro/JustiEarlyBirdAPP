@@ -2,7 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable import/order */
 const cors = require('cors');
-
+const moment = require('moment');
 const config = require('../config').app;
 const logger = require('../helpers/logger');
 const chargeForProject = require('../helpers/chargeForProject');
@@ -13,8 +13,66 @@ const router = require('express').Router();
 const ProjectModel = require('../models/project');
 const UserModel = require('../models/user');
 const sendAnalytics = require('../helpers/googleAnalyticsSend');
+const bot = require('../bot/index');
+const mixpanelAnalytics = require('../helpers/mixpanelAnalytics');
 
 router.use(cors());
+
+const paymentInformationMessage = async (project, product) => {
+  if (process.NODE_ENV && process.NODE_ENV !== 'test') {
+    const user = await UserModel.findById(project.user_id);
+    // const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+    const cfplatform = project.site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+    const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+    bot.sendMessage(`A user using the email ${user.email} has successfully added a payment method for his ${cfplatform} project on ${product} for the campaign ${project.url} at ${utcMoment}.`);
+  }
+};
+
+const realPaymentMessage = async (project, amount, product) => {
+  const user = await UserModel.findById(project.user_id);
+  // const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+  const cfplatform = project.site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+  const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+  bot.sendMessage(`A user using the email ${user.email} has made a payment of ${+amount / 100}$ at ${utcMoment}. This is regarding his ${cfplatform} project on ${product} which is promoting the campaign ${project.url}.`);
+};
+
+const findUserToMixpanel = async (project, event) => {
+  const user = await UserModel.findById(project.user_id);
+  mixpanelAnalytics.currentUser(
+    user._id,
+    user.fullname,
+    user.email,
+    user.stripe_id,
+    user.is_admin,
+    user.location,
+    user.timezone,
+    user.is_suspended,
+    false,
+    true,
+  );
+  if (event === 'saved-payment-now-10') {
+    mixpanelAnalytics.currEvent(user._id, 'Saved payment stripe', 'saved-payment-stripe', 'saved-payment-now-10', 'Save Payment Now 10 per day');
+  }
+  if (event === 'saved-payment-later-15') {
+    mixpanelAnalytics.currEvent(user._id, 'Saved payment stripe', 'saved-payment-stripe', 'saved-payment-later-15', 'Save Payment Later 15 per day');
+  }
+  if (event === 'trial-started-prod') {
+    mixpanelAnalytics.currEvent(user._id, 'Trial started on production', 'trial-status', 'trial-started-prod', 'Trial started on production 3 days');
+  }
+  if (event === 'trial-started-staging') {
+    mixpanelAnalytics.currEvent(user._id, 'Trial started on staging', 'trial-status', 'trial-started-staging', 'Trial ended on staging 1 day');
+  }
+  if (event === 'trial-ended-prod') {
+    mixpanelAnalytics.currEvent(user._id, 'Trial ended on production', 'trial-status', 'trial-ended-prod', 'Trial ended on production 3 days');
+  }
+  if (event === 'trial-ended-staging') {
+    mixpanelAnalytics.currEvent(user._id, 'Trial ended on staging', 'trial-status', 'trial-ended-staging', 'Trial ended on staging 1 day');
+  }
+  /// //////////////
+  if (event === 'payment-received-stripe') {
+    mixpanelAnalytics.currEvent(user._id, 'Trial ended on staging', 'payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+  }
+};
 
 const stripeEventHandlers = {
 
@@ -40,6 +98,20 @@ const stripeEventHandlers = {
     project.payment_configured_at = new Date();
     project.stripe_subscription_id = subscription.id;
     project.finished_at = undefined;
+
+    sendAnalytics('saved-payment-stripe', 'saved-payment-now-10', 'Save Payment Now 10 per day');
+    findUserToMixpanel(project, 'saved-payment-now-10');
+    if (process.NODE_ENV === 'production') {
+      paymentInformationMessage(project, 'JEB');
+      sendAnalytics('trial-status', 'trial-started-prod', 'Trial started on production 3 days');
+      findUserToMixpanel(project, 'trial-started-prod');
+    } else if (process.NODE_ENV === 'staging') {
+      paymentInformationMessage(project, 'JEB Staging');
+      sendAnalytics('trial-status', 'trial-started-staging', 'Trial started on staging 1 day');
+      findUserToMixpanel(project, 'trial-started-staging');
+    }
+
+    // sendAnalytics('user-sign-up', 'signed-up-native', 'New user signed up Natively');
     await project.save();
 
     if (oldSubscription) {
@@ -65,6 +137,15 @@ const stripeEventHandlers = {
     }
     project.is_payment_active = ['active', 'trialing'].includes(subscription.status);
     project.debt = ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15;
+    if (project.is_trialing && !subscription.status === 'trialing') {
+      if (process.NODE_ENV === 'production') {
+        findUserToMixpanel(project, 'trial-ended-prod');
+        sendAnalytics('trial-status', 'trial-ended-prod', 'Trial ended on production 3 days');
+      } else if (process.NODE_ENV === 'staging') {
+        findUserToMixpanel(project, 'trial-ended-staging');
+        sendAnalytics('trial-status', 'trial-ended-staging', 'Trial ended on staging 1 day');
+      }
+    }
     project.is_trialing = subscription.status === 'trialing';
     await project.save();
 
@@ -118,6 +199,18 @@ const stripeEventHandlers = {
     project.payment_configured_at = new Date();
     project.stripe_payment_method_id = setupIntent.payment_method;
     project.finished_at = undefined;
+    sendAnalytics('saved-payment-stripe', 'saved-payment-later-15', 'Save Payment Later 15 per day');
+    findUserToMixpanel(project, 'saved-payment-later-15');
+    if (process.NODE_ENV === 'production') {
+      paymentInformationMessage(project, 'JEB');
+      sendAnalytics('trial-status', 'trial-started-prod', 'Trial started on production 3 days');
+      findUserToMixpanel(project, 'trial-started-prod');
+    } else if (process.NODE_ENV === 'staging') {
+      paymentInformationMessage(project, 'JEB Staging');
+      sendAnalytics('trial-status', 'trial-started-staging', 'Trial started on staging 1 day');
+      findUserToMixpanel(project, 'trial-started-staging');
+    }
+
     await project.save();
 
     res.sendStatus(200);
@@ -156,6 +249,15 @@ const stripeEventHandlers = {
     if (project.plan === 'now_plan') {
       await project.save();
       sendAnalytics('Now Plan', 'Payment Success', 'Now Plan Payment Success');
+      if (process.NODE_ENV === 'production') {
+        realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+        sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+        findUserToMixpanel(project, 'payment-received-stripe');
+      } else if (process.NODE_ENV === 'staging') {
+        realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+        sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+        findUserToMixpanel(project, 'payment-received-stripe');
+      }
       return res.sendStatus(200);
     }
 
@@ -172,6 +274,15 @@ const stripeEventHandlers = {
         await project.save();
         logger.info(`Project ${projectId} is fully paid (/1)`);
         sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
+        if (process.NODE_ENV === 'production') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+          findUserToMixpanel(project, 'payment-received-stripe');
+        } else if (process.NODE_ENV === 'staging') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+          findUserToMixpanel(project, 'payment-received-stripe');
+        }
         break;
       }
       case ('/2'): {
@@ -180,6 +291,15 @@ const stripeEventHandlers = {
         logger.info(`Project ${projectId} is partially paid (/2)`);
         await chargeForProject(project, user);
         sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
+        if (process.NODE_ENV === 'production') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+          findUserToMixpanel(project, 'payment-received-stripe');
+        } else if (process.NODE_ENV === 'staging') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+          findUserToMixpanel(project, 'payment-received-stripe');
+        }
         break;
       }
       case ('/4'): {
@@ -188,6 +308,15 @@ const stripeEventHandlers = {
           project.stripe_payment_method_id = '';
           project.plan = undefined;
           sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
+          if (process.NODE_ENV === 'production') {
+            realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+            sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+            findUserToMixpanel(project, 'payment-received-stripe');
+          } else if (process.NODE_ENV === 'staging') {
+            realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+            sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+            findUserToMixpanel(project, 'payment-received-stripe');
+          }
         }
         await project.save();
         logger.info(`Project ${projectId} is ${project.debt === 0 ? 'fully' : 'partially'} paid (/4)`);
