@@ -2,7 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable import/order */
 const cors = require('cors');
-
+const moment = require('moment');
 const config = require('../config').app;
 const logger = require('../helpers/logger');
 const chargeForProject = require('../helpers/chargeForProject');
@@ -13,8 +13,27 @@ const router = require('express').Router();
 const ProjectModel = require('../models/project');
 const UserModel = require('../models/user');
 const sendAnalytics = require('../helpers/googleAnalyticsSend');
+const bot = require('../bot/index');
 
 router.use(cors());
+
+const paymentInformationMessage = async (project, product) => {
+  if (process.NODE_ENV && process.NODE_ENV !== 'test') {
+    const user = await UserModel.findById(project.user_id);
+    // const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+    const cfplatform = project.site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+    const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+    bot.sendMessage(`A user using the email ${user.email} has successfully added a payment method for his ${cfplatform} project on ${product} for the campaign ${project.url} at ${utcMoment}.`);
+  }
+};
+
+const realPaymentMessage = async (project, amount, product) => {
+  const user = await UserModel.findById(project.user_id);
+  // const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+  const cfplatform = project.site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+  const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+  bot.sendMessage(`A user using the email ${user.email} has made a payment of ${+amount / 100}$ at ${utcMoment}. This is regarding his ${cfplatform} project on ${product} which is promoting the campaign ${project.url}.`);
+};
 
 const stripeEventHandlers = {
 
@@ -40,6 +59,17 @@ const stripeEventHandlers = {
     project.payment_configured_at = new Date();
     project.stripe_subscription_id = subscription.id;
     project.finished_at = undefined;
+
+    sendAnalytics('saved-payment-stripe', 'saved-payment-now-10', 'Save Payment Now 10 per day');
+    if (process.NODE_ENV === 'production') {
+      paymentInformationMessage(project, 'JEB');
+      sendAnalytics('trial-status', 'trial-started-prod', 'Trial started on production 3 days');
+    } else if (process.NODE_ENV === 'staging') {
+      paymentInformationMessage(project, 'JEB Staging');
+      sendAnalytics('trial-status', 'trial-started-staging', 'Trial started on staging 1 day');
+    }
+
+    // sendAnalytics('user-sign-up', 'signed-up-native', 'New user signed up Natively');
     await project.save();
 
     if (oldSubscription) {
@@ -65,6 +95,13 @@ const stripeEventHandlers = {
     }
     project.is_payment_active = ['active', 'trialing'].includes(subscription.status);
     project.debt = ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15;
+    if (project.is_trialing && !subscription.status === 'trialing') {
+      if (process.NODE_ENV === 'production') {
+        sendAnalytics('trial-status', 'trial-ended-prod', 'Trial ended on production 3 days');
+      } else if (process.NODE_ENV === 'staging') {
+        sendAnalytics('trial-status', 'trial-ended-staging', 'Trial ended on staging 1 day');
+      }
+    }
     project.is_trialing = subscription.status === 'trialing';
     await project.save();
 
@@ -118,6 +155,16 @@ const stripeEventHandlers = {
     project.payment_configured_at = new Date();
     project.stripe_payment_method_id = setupIntent.payment_method;
     project.finished_at = undefined;
+    sendAnalytics('saved-payment-stripe', 'saved-payment-later-15', 'Save Payment Later 15 per day');
+
+    if (process.NODE_ENV === 'production') {
+      paymentInformationMessage(project, 'JEB');
+      sendAnalytics('trial-status', 'trial-started-prod', 'Trial started on production 3 days');
+    } else if (process.NODE_ENV === 'staging') {
+      paymentInformationMessage(project, 'JEB Staging');
+      sendAnalytics('trial-status', 'trial-started-staging', 'Trial started on staging 1 day');
+    }
+
     await project.save();
 
     res.sendStatus(200);
@@ -156,6 +203,13 @@ const stripeEventHandlers = {
     if (project.plan === 'now_plan') {
       await project.save();
       sendAnalytics('Now Plan', 'Payment Success', 'Now Plan Payment Success');
+      if (process.NODE_ENV === 'production') {
+        realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+        sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+      } else if (process.NODE_ENV === 'staging') {
+        realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+        sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+      }
       return res.sendStatus(200);
     }
 
@@ -172,6 +226,13 @@ const stripeEventHandlers = {
         await project.save();
         logger.info(`Project ${projectId} is fully paid (/1)`);
         sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
+        if (process.NODE_ENV === 'production') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+        } else if (process.NODE_ENV === 'staging') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+        }
         break;
       }
       case ('/2'): {
@@ -180,6 +241,13 @@ const stripeEventHandlers = {
         logger.info(`Project ${projectId} is partially paid (/2)`);
         await chargeForProject(project, user);
         sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
+        if (process.NODE_ENV === 'production') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+        } else if (process.NODE_ENV === 'staging') {
+          realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+          sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+        }
         break;
       }
       case ('/4'): {
@@ -188,6 +256,13 @@ const stripeEventHandlers = {
           project.stripe_payment_method_id = '';
           project.plan = undefined;
           sendAnalytics('Later Plan', 'Payment Success', 'Later Plan Payment Success');
+          if (process.NODE_ENV === 'production') {
+            realPaymentMessage(project, paymentIntent.amount_received, 'JEB');
+            sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+          } else if (process.NODE_ENV === 'staging') {
+            realPaymentMessage(project, paymentIntent.amount_received, 'JEB Staging');
+            sendAnalytics('payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+          }
         }
         await project.save();
         logger.info(`Project ${projectId} is ${project.debt === 0 ? 'fully' : 'partially'} paid (/4)`);

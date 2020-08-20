@@ -11,6 +11,7 @@ const router = require('express').Router();
 
 const UserModel = require('../models/user');
 const ProjectModel = require('../models/project');
+const sendAnalytics = require('../helpers/googleAnalyticsSend');
 
 const selfOnly = (req, res, next) => {
   if (req.user.is_admin) return next();
@@ -56,9 +57,13 @@ router.put('/:id', selfOnly, async (req, res, next) => {
     let obj = await UserModel.findByIdAndUpdate({ _id: req.params.id }, req.body);
     if (!obj) return res.sendStatus(404);
 
-    obj = await UserModel.findById({ _id: req.params.id });
-    delete obj._doc.password;
+    if (req.body.timezone && req.body.timezone !== obj._doc.timezone) {
+      sendAnalytics('user-profile', 'user-profile-timezone-saved', 'User set a timezone and saves it');
+    }
 
+    obj = await UserModel.findById({ _id: req.params.id });
+
+    delete obj._doc.password;
     res.send(obj).status(200);
   } catch (err) {
     logger.error(err);

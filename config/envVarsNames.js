@@ -16,6 +16,9 @@ module.exports = [
   'PRIV_KEY_PATH',
   'CERTS_PATH',
   'HTTPS',
+  'TELEGRAM_USER_IDS',
+  'TELEGRAM_BOT_TOKEN',
+  'MIXPANEL_TOKEN',
 ];
 
 if (process.NODE_ENV === 'production') {
