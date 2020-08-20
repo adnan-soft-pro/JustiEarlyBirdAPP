@@ -100,6 +100,12 @@ router.delete('/:id', selfOnly, async (req, res, next) => {
     const obj = await UserModel.findByIdAndRemove(req.params.id);
     if (!obj) return res.sendStatus(404);
 
+    if (obj.stripe_id) {
+      await stripe.customers.del(
+        obj.stripe_id,
+      );
+    }
+
     res.send({ message: 'User successfully deleted' }).status(200);
   } catch (err) {
     logger.error(err);
