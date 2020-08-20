@@ -1,13 +1,14 @@
 /* eslint-disable camelcase */
 const Mixpanel = require('mixpanel');
 const config = require('../config/index').app;
+const ProjectModel = require('../models/project');
 
 const mixpanel = Mixpanel.init(config.mixpanelToken);
 
 // create or update a user in Mixpanel
 
-const currentUser = (distinct_id, fullname, email, stripe_id, is_admin,
-  location, timezone, is_suspended, signUp) => {
+const currentUser = async (distinct_id, fullname, email, stripe_id, is_admin,
+  location, timezone, is_suspended, signUp, plan) => {
   const user = {
     $first_name: fullname,
     $email: email,
@@ -20,6 +21,12 @@ const currentUser = (distinct_id, fullname, email, stripe_id, is_admin,
   };
   if (signUp) {
     user.$created = (new Date()).toISOString();
+  }
+  if (plan) {
+    const projects = await ProjectModel.find({ user_id: distinct_id, is_payment_active: true });
+    if (projects.length === 1) user.plan = 'User has 1 project with plan';
+    else if (projects.length > 1) user.plan = `User has ${projects.length} project with plan`;
+    else user.plan = 'User does not have project with plan';
   }
   mixpanel.people.set(distinct_id, user);
 };

@@ -79,6 +79,7 @@ router.post('/register', async (req, res, next) => {
       user.timezone,
       user.is_suspended,
       true,
+      true,
     );
     mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-native', 'New user signed up Natively');
 
@@ -128,6 +129,8 @@ router.post('/login', async (req, res, next) => {
       user.location,
       user.timezone,
       user.is_suspended,
+      false,
+      true,
     );
     mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-native', 'User logged in Natively');
     sendAnalytics('user-login', 'login-native', 'User logged in Natively');
@@ -177,6 +180,7 @@ router.post('/login/social', async (req, res, next) => {
           user.timezone,
           user.is_suspended,
           true,
+          true,
         );
         mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-google', 'New user signed up with Google');
       } else {
@@ -210,6 +214,8 @@ router.post('/login/social', async (req, res, next) => {
         user.location,
         user.timezone,
         user.is_suspended,
+        false,
+        true,
       );
       mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-google', 'User logged in with Google');
     } else {
@@ -227,6 +233,8 @@ router.post('/login/social', async (req, res, next) => {
         user.location,
         user.timezone,
         user.is_suspended,
+        false,
+        true,
       );
       mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-facebook', 'User logged in with Facebook');
     }
