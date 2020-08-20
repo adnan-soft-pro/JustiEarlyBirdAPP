@@ -22,7 +22,6 @@ sgMail.setApiKey(config.sendgripApiKey);
 const router = express.Router();
 
 const signUpMessaga = (email, platform, fullname) => {
-  console.log('env', process.NODE_ENV);
   if (process.NODE_ENV && process.NODE_ENV !== 'test') {
     const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
 
@@ -70,7 +69,17 @@ router.post('/register', async (req, res, next) => {
       stripe_id: customer.id,
     });
     signUpMessaga(email, 'natively', fullname);
-    mixpanelAnalytics.currentUser(user._id, user.fullname, user.email, user.stripe_id, user.is_admin, user.location, user.timezone, user.is_suspended, true);
+    mixpanelAnalytics.currentUser(
+      user._id,
+      user.fullname,
+      user.email,
+      user.stripe_id,
+      user.is_admin,
+      user.location,
+      user.timezone,
+      user.is_suspended,
+      true,
+    );
     mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-native', 'New user signed up Natively');
 
     sendAnalytics('user-sign-up', 'signed-up-native', 'New user signed up Natively');
@@ -110,7 +119,16 @@ router.post('/login', async (req, res, next) => {
       { id: user._id, email: user.email, type: 'login' },
       config.jwtSecret,
     );
-    mixpanelAnalytics.currentUser(user._id, user.fullname, user.email, user.stripe_id, user.is_admin, user.location, user.timezone, user.is_suspended);
+    mixpanelAnalytics.currentUser(
+      user._id,
+      user.fullname,
+      user.email,
+      user.stripe_id,
+      user.is_admin,
+      user.location,
+      user.timezone,
+      user.is_suspended,
+    );
     mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-native', 'User logged in Natively');
     sendAnalytics('user-login', 'login-native', 'User logged in Natively');
     delete user._doc.password;
@@ -149,12 +167,32 @@ router.post('/login/social', async (req, res, next) => {
       if (req.body.social === 'google') {
         sendAnalytics('user-sign-up', 'signed-up-google', 'New user signed up with Google');
         signUpMessaga(user.email, 'oauth-google', user.fullname);
-        mixpanelAnalytics.currentUser(user._id, user.fullname, user.email, user.stripe_id, user.is_admin, user.location, user.timezone, user.is_suspended, true);
+        mixpanelAnalytics.currentUser(
+          user._id,
+          user.fullname,
+          user.email,
+          user.stripe_id,
+          user.is_admin,
+          user.location,
+          user.timezone,
+          user.is_suspended,
+          true,
+        );
         mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-google', 'New user signed up with Google');
       } else {
         sendAnalytics('user-sign-up', 'signed-up-facebook', 'New user signed up with Facebook');
         signUpMessaga(user.email, 'oauth-facebook', user.fullname);
-        mixpanelAnalytics.currentUser(user._id, user.fullname, user.email, user.stripe_id, user.is_admin, user.location, user.timezone, user.is_suspended, true);
+        mixpanelAnalytics.currentUser(
+          user._id,
+          user.fullname,
+          user.email,
+          user.stripe_id,
+          user.is_admin,
+          user.location,
+          user.timezone,
+          user.is_suspended,
+          true,
+        );
         mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-facebook', 'New user signed up with Facebook');
       }
 
@@ -163,11 +201,33 @@ router.post('/login/social', async (req, res, next) => {
 
     if (req.body.social === 'google') {
       sendAnalytics('user-login', 'login-google', 'User logged in with Google');
-      mixpanelAnalytics.currentUser(user._id, user.fullname, user.email, user.stripe_id, user.is_admin, user.location, user.timezone, user.is_suspended);
+      mixpanelAnalytics.currentUser(
+        user._id,
+        user.fullname,
+        user.email,
+        user.stripe_id,
+        user.is_admin,
+        user.location,
+        user.timezone,
+        user.is_suspended,
+      );
       mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-google', 'User logged in with Google');
     } else {
-      sendAnalytics('user-login', 'login-facebook', 'User logged in with Facebook');
-      mixpanelAnalytics.currentUser(user._id, user.fullname, user.email, user.stripe_id, user.is_admin, user.location, user.timezone, user.is_suspended);
+      sendAnalytics(
+        'user-login',
+        'login-facebook',
+        'User logged in with Facebook',
+      );
+      mixpanelAnalytics.currentUser(
+        user._id,
+        user.fullname,
+        user.email,
+        user.stripe_id,
+        user.is_admin,
+        user.location,
+        user.timezone,
+        user.is_suspended,
+      );
       mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-facebook', 'User logged in with Facebook');
     }
 
