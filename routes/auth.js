@@ -22,8 +22,8 @@ sgMail.setApiKey(config.sendgripApiKey);
 const router = express.Router();
 
 const signUpMessaga = (email, platform, fullname) => {
-  if (process.NODE_ENV && process.NODE_ENV !== 'test') {
-    const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
 
     const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
     bot.sendMessage(`A user using the email ${email} has signed up to ${product} at ${utcMoment} and using ${platform}. Their name is ${fullname}.`);

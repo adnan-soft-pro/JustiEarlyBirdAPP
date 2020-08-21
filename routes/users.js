@@ -59,7 +59,7 @@ router.put('/:id', selfOnly, async (req, res, next) => {
     if (!obj) return res.sendStatus(404);
 
     if (req.body.timezone && req.body.timezone !== obj._doc.timezone) {
-      if (process.NODE_ENV && process.NODE_ENV !== 'test') {
+      if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
         sendAnalytics('user-profile', 'user-profile-timezone-saved', 'User set a timezone and saves it');
         mixpanelAnalytics.currentUser(
           obj._doc._id,

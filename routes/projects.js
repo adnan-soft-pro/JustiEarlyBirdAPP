@@ -25,8 +25,8 @@ const mixpanelAnalytics = require('../helpers/mixpanelAnalytics');
 const bot = require('../bot/index');
 
 const createProjectMessage = (email, site_type, url) => {
-  if (process.NODE_ENV && process.NODE_ENV !== 'test') {
-    const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
     const cfplatform = site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
     const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
     bot.sendMessage(`A user using the email ${email} has created a new ${cfplatform} project on ${product} for the campaign ${url} at ${utcMoment}.`);
@@ -34,8 +34,8 @@ const createProjectMessage = (email, site_type, url) => {
 };
 
 const deleteProjectMessage = (project, email) => {
-  if (process.NODE_ENV && process.NODE_ENV !== 'test') {
-    const product = process.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
     const cfplatform = project.site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
     const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
     bot.sendMessage(`A user using the email ${email} has deleted his ${cfplatform} project on ${product} for the campaign ${project.url} at ${utcMoment}.`);

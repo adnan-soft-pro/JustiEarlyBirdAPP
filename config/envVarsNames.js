@@ -22,7 +22,7 @@ module.exports = [
   'MIXPANEL_TOKEN',
 ];
 
-if (process.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production') {
   module.exports.push(...[
     'MONITORING_URL',
   ]);
