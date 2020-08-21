@@ -1,4 +1,5 @@
 module.exports = [
+  'MONITORING_URL',
   'DB_URL',
   'HTTP_PORT',
   'HTTPS_PORT',
