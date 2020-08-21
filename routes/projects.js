@@ -33,6 +33,15 @@ const createProjectMessage = (email, site_type, url) => {
   }
 };
 
+const createProjectNextBtnMessage = (email, site_type, url) => {
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+    const cfplatform = site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+    const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+    bot.sendMessage(`A user using the email ${email} has press "next" button for create a new ${cfplatform} project on ${product} for the campaign ${url} at ${utcMoment}.`);
+  }
+};
+
 const deleteProjectMessage = (project, email) => {
   if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
     const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
@@ -407,6 +416,36 @@ router.post('/', async (req, res, next) => {
     }
 
     res.send(await project.save());
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+router.post('/next', async (req, res, next) => {
+  try {
+    const { user } = req;
+    const {
+      url, site_type,
+    } = req.body;
+    let validUrl;
+
+    try {
+      validUrl = await validateProjectUrl(site_type, url);
+    } catch (err) {
+      return res.status(400).send(err.message);
+    }
+
+    if (req.body.site_type === 'KS') {
+      sendAnalytics('user-onboard-add-project-url', 'user-onboard-add-project-url', 'User added KS project url');
+      createProjectNextBtnMessage(user.email, site_type, validUrl);
+      mixpanelAnalytics.currEvent(user._id, 'User onboard add project url', 'user-onboard-add-project-url', 'user-onboard-add-project-url', `User added project url. URL: ${validUrl}`);
+    } else {
+      sendAnalytics('user-onboard-add-project-url', 'user-onboard-add-project-url', 'User added IG project url');
+      createProjectNextBtnMessage(user.email, site_type, validUrl);
+      mixpanelAnalytics.currEvent(user._id, 'User onboard add project url', 'user-onboard-add-project-url', 'user-onboard-add-project-url', `User added project url. URL: ${validUrl}`);
+    }
+    res.sendStatus(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

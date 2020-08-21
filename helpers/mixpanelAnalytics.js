@@ -9,6 +9,7 @@ const mixpanel = Mixpanel.init(config.mixpanelToken);
 
 const currentUser = async (distinct_id, fullname, email, stripe_id, is_admin,
   location, timezone, is_suspended, signUp, plan) => {
+  if (process.env.NODE_ENV !== 'production') return 1;
   const user = {
     $first_name: fullname,
     $email: email,
@@ -28,15 +29,17 @@ const currentUser = async (distinct_id, fullname, email, stripe_id, is_admin,
     else if (projects.length > 1) user.plan = `User has ${projects.length} project with plan`;
     else user.plan = 'User does not have project with plan';
   }
-  mixpanel.people.set(distinct_id, user);
+  return mixpanel.people.set(distinct_id, user);
 };
 const currEvent = (distinct_id, eventName, category, action, label) => {
-  mixpanel.track(eventName, {
-    distinct_id,
-    Category: category,
-    Action: action,
-    Label: label,
-  });
+  if (process.env.NODE_ENV === 'production') {
+    mixpanel.track(eventName, {
+      distinct_id,
+      Category: category,
+      Action: action,
+      Label: label,
+    });
+  }
 };
 // track an event with optional properties
 
