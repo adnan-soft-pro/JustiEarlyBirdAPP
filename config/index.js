@@ -33,6 +33,9 @@ const getConfig = () => ({
     emailFrom: process.env.EMAIL_FROM,
     sendgripApiKey: process.env.SENDGRID_API_KEY,
     trackingId: process.env.TRACKINGID,
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    telegramUserIds: JSON.parse(process.env.TELEGRAM_USER_IDS),
+    mixpanelToken: process.env.MIXPANEL_TOKEN,
   },
   aws: {
     region: process.env.AWS_REGION,

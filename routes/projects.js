@@ -10,7 +10,7 @@ const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const startChargeFlow = require('../helpers/startChargeFlow');
 const validateProjectUrl = require('../helpers/validateProjectUrl');
 const chargeForProject = require('../helpers/chargeForProject');
-
+const moment = require('moment');
 const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
 const exist = exist_setIdKey('id');
@@ -20,6 +20,36 @@ const RewardModel = require('../models/reward');
 const UserModel = require('../models/user');
 const RewardChangeLogModel = require('../models/reward_change_log');
 const stripe = require('stripe')(config.stripeSecret);
+const sendAnalytics = require('../helpers/googleAnalyticsSend');
+const mixpanelAnalytics = require('../helpers/mixpanelAnalytics');
+const bot = require('../bot/index');
+
+const createProjectMessage = (email, site_type, url) => {
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+    const cfplatform = site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+    const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+    bot.sendMessage(`A user using the email ${email} has created a new ${cfplatform} project on ${product} for the campaign ${url} at ${utcMoment}.`);
+  }
+};
+
+const createProjectNextBtnMessage = (email, site_type, url) => {
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+    const cfplatform = site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+    const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+    bot.sendMessage(`A user using the email ${email} has press "next" button for create a new ${cfplatform} project on ${product} for the campaign ${url} at ${utcMoment}.`);
+  }
+};
+
+const deleteProjectMessage = (project, email) => {
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+    const cfplatform = project.site_type === 'KS' ? 'Kickstarter' : 'Indiegogo';
+    const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+    bot.sendMessage(`A user using the email ${email} has deleted his ${cfplatform} project on ${product} for the campaign ${project.url} at ${utcMoment}.`);
+  }
+};
 
 /**
  * Endpoint: /projects/:id
@@ -89,6 +119,22 @@ router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
 
     await deleteProjectFromDynamo(req.params.id);
     await req.project.deleteOne();
+    deleteProjectMessage(req.project, req.user.email);
+
+    sendAnalytics('deleted-project-click', 'deleted-project-done', 'Deleted Project');
+    mixpanelAnalytics.currentUser(
+      req.user._id,
+      req.user.fullname,
+      req.user.email,
+      req.user.stripe_id,
+      req.user.is_admin,
+      req.user.location,
+      req.user.timezone,
+      req.user.is_suspended,
+      false,
+      true,
+    );
+    mixpanelAnalytics.currEvent(req.user._id, 'Deleted Project', 'deleted-project-click', 'deleted-project-done', 'Deleted Project');
 
     res.send({ message: 'Project successfully deleted' }).status(200);
   } catch (err) {
@@ -153,6 +199,21 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       }
 
       case ('later_plan'): {
+        sendAnalytics('subscription-page-btn-end-sub', 'subscription-page-btn-end-sub-clicked', 'When a clicks and confirm the end subscription and pay with 14 days option');
+        mixpanelAnalytics.currentUser(
+          req.user._id,
+          req.user.fullname,
+          req.user.email,
+          req.user.stripe_id,
+          req.user.is_admin,
+          req.user.location,
+          req.user.timezone,
+          req.user.is_suspended,
+          false,
+          true,
+        );
+        mixpanelAnalytics.currEvent(req.user._id, 'clicks and confirm the end subscription', 'subscription-page-btn-end-sub', 'subscription-page-btn-end-sub-clicked', 'When a clicks and confirm the end subscription and pay with 14 days option');
+
         if (project.initial_debt <= 0) {
           project.plan = undefined;
           project.stripe_payment_method_id = undefined;
@@ -332,7 +393,59 @@ router.post('/', async (req, res, next) => {
       run_option: run_option || 1,
     });
 
+    mixpanelAnalytics.currentUser(
+      user._id,
+      user.fullname,
+      user.email,
+      user.stripe_id,
+      user.is_admin,
+      user.location,
+      user.timezone,
+      user.is_suspended,
+      false,
+      true,
+    );
+    if (req.body.site_type === 'KS') {
+      sendAnalytics('project-created', 'project-created-ks', 'New Kickstarter project was created');
+      createProjectMessage(user.email, req.body.site_type, validUrl);
+      mixpanelAnalytics.currEvent(user._id, 'Create new Project', 'project-created', 'project-created-ks', 'New Kickstarter project was created');
+    } else {
+      sendAnalytics('project-created', 'project-created-ig', 'New Indiegogo project was created');
+      createProjectMessage(user.email, req.body.site_type, validUrl);
+      mixpanelAnalytics.currEvent(user._id, 'Create new Project', 'project-created', 'project-created-ig', 'New Indiegogo project was created');
+    }
+
     res.send(await project.save());
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
+router.post('/next', async (req, res, next) => {
+  try {
+    const { user } = req;
+    const {
+      url, site_type,
+    } = req.body;
+    let validUrl;
+
+    try {
+      validUrl = await validateProjectUrl(site_type, url);
+    } catch (err) {
+      return res.status(400).send(err.message);
+    }
+
+    if (req.body.site_type === 'KS') {
+      sendAnalytics('user-onboard-add-project-url', 'user-onboard-add-project-url', 'User added KS project url');
+      createProjectNextBtnMessage(user.email, site_type, validUrl);
+      mixpanelAnalytics.currEvent(user._id, 'User onboard add project url', 'user-onboard-add-project-url', 'user-onboard-add-project-url', `User added project url. URL: ${validUrl}`);
+    } else {
+      sendAnalytics('user-onboard-add-project-url', 'user-onboard-add-project-url', 'User added IG project url');
+      createProjectNextBtnMessage(user.email, site_type, validUrl);
+      mixpanelAnalytics.currEvent(user._id, 'User onboard add project url', 'user-onboard-add-project-url', 'user-onboard-add-project-url', `User added project url. URL: ${validUrl}`);
+    }
+    res.sendStatus(200);
   } catch (err) {
     logger.error(err);
     next(new Error(err));

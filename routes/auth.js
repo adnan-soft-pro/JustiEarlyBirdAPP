@@ -6,16 +6,29 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const moment = require('moment');
 const logger = require('../helpers/logger');
 const UserModel = require('../models/user');
 const config = require('../config/index').app;
 const { resetPassword } = require('../options/resetPasswordMail');
 const stripe = require('stripe')(config.stripeSecret);
 const sgMail = require('@sendgrid/mail');
+const sendAnalytics = require('../helpers/googleAnalyticsSend');
+const mixpanelAnalytics = require('../helpers/mixpanelAnalytics');
+const bot = require('../bot/index');
 
 sgMail.setApiKey(config.sendgripApiKey);
 
 const router = express.Router();
+
+const signUpMessaga = (email, platform, fullname) => {
+  if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
+    const product = process.env.NODE_ENV === 'production' ? 'JEB' : 'JEB Staging';
+
+    const utcMoment = moment.utc().format('DD-MM-YYYY/hh-mm UTC');
+    bot.sendMessage(`A user using the email ${email} has signed up to ${product} at ${utcMoment} and using ${platform}. Their name is ${fullname}.`);
+  }
+};
 
 /**
  * Endpoint: /auth/register
@@ -55,7 +68,22 @@ router.post('/register', async (req, res, next) => {
       password,
       stripe_id: customer.id,
     });
+    signUpMessaga(email, 'natively', fullname);
+    mixpanelAnalytics.currentUser(
+      user._id,
+      user.fullname,
+      user.email,
+      user.stripe_id,
+      user.is_admin,
+      user.location,
+      user.timezone,
+      user.is_suspended,
+      true,
+      true,
+    );
+    mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-native', 'New user signed up Natively');
 
+    sendAnalytics('user-sign-up', 'signed-up-native', 'New user signed up Natively');
     res.send(await user.save());
   } catch (err) {
     logger.error(err);
@@ -92,7 +120,20 @@ router.post('/login', async (req, res, next) => {
       { id: user._id, email: user.email, type: 'login' },
       config.jwtSecret,
     );
-
+    mixpanelAnalytics.currentUser(
+      user._id,
+      user.fullname,
+      user.email,
+      user.stripe_id,
+      user.is_admin,
+      user.location,
+      user.timezone,
+      user.is_suspended,
+      false,
+      true,
+    );
+    mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-native', 'User logged in Natively');
+    sendAnalytics('user-login', 'login-native', 'User logged in Natively');
     delete user._doc.password;
     res.header('authorization', `Bearer ${token}`).send(user);
   } catch (err) {
@@ -124,11 +165,78 @@ router.post('/login/social', async (req, res, next) => {
       user = new UserModel();
       user.email = userData.data.email;
       user.fullname = userData.data.name;
-
       const customer = await stripe.customers.create({ email: user.email });
       user.stripe_id = customer.id;
+      if (req.body.social === 'google') {
+        sendAnalytics('user-sign-up', 'signed-up-google', 'New user signed up with Google');
+        signUpMessaga(user.email, 'oauth-google', user.fullname);
+        mixpanelAnalytics.currentUser(
+          user._id,
+          user.fullname,
+          user.email,
+          user.stripe_id,
+          user.is_admin,
+          user.location,
+          user.timezone,
+          user.is_suspended,
+          true,
+          true,
+        );
+        mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-google', 'New user signed up with Google');
+      } else {
+        sendAnalytics('user-sign-up', 'signed-up-facebook', 'New user signed up with Facebook');
+        signUpMessaga(user.email, 'oauth-facebook', user.fullname);
+        mixpanelAnalytics.currentUser(
+          user._id,
+          user.fullname,
+          user.email,
+          user.stripe_id,
+          user.is_admin,
+          user.location,
+          user.timezone,
+          user.is_suspended,
+          true,
+        );
+        mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-facebook', 'New user signed up with Facebook');
+      }
 
       user = await user.save();
+    }
+
+    if (req.body.social === 'google') {
+      sendAnalytics('user-login', 'login-google', 'User logged in with Google');
+      mixpanelAnalytics.currentUser(
+        user._id,
+        user.fullname,
+        user.email,
+        user.stripe_id,
+        user.is_admin,
+        user.location,
+        user.timezone,
+        user.is_suspended,
+        false,
+        true,
+      );
+      mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-google', 'User logged in with Google');
+    } else {
+      sendAnalytics(
+        'user-login',
+        'login-facebook',
+        'User logged in with Facebook',
+      );
+      mixpanelAnalytics.currentUser(
+        user._id,
+        user.fullname,
+        user.email,
+        user.stripe_id,
+        user.is_admin,
+        user.location,
+        user.timezone,
+        user.is_suspended,
+        false,
+        true,
+      );
+      mixpanelAnalytics.currEvent(user._id, 'Log in', 'user-login', 'login-facebook', 'User logged in with Facebook');
     }
 
     const token = jwt.sign(

@@ -1,4 +1,5 @@
 module.exports = [
+  'MONITORING_URL',
   'DB_URL',
   'HTTP_PORT',
   'HTTPS_PORT',
@@ -16,9 +17,12 @@ module.exports = [
   'PRIV_KEY_PATH',
   'CERTS_PATH',
   'HTTPS',
+  'TELEGRAM_USER_IDS',
+  'TELEGRAM_BOT_TOKEN',
+  'MIXPANEL_TOKEN',
 ];
 
-if (process.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production') {
   module.exports.push(...[
     'MONITORING_URL',
   ]);
