@@ -31,11 +31,13 @@ const init = (io) => {
   });
 
   RewardModel.watch().on('change', (data) => {
-    const { operationType, updateDescription, documentKey } = data;
-    if (operationType === 'update') {
+    const {
+      operationType, updateDescription, fullDocument, documentKey,
+    } = data;
+    if (['update', 'replace'].includes(operationType)) {
       io.sockets
         .in(documentKey._id)
-        .emit('reward-changed', { updateDescription, id: documentKey._id });
+        .emit('reward-changed', { updateDescription, fullDocument, id: documentKey._id });
     }
   });
 };

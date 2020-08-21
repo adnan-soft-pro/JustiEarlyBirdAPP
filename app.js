@@ -1,5 +1,4 @@
 // Npm modules
-require('dotenv').config({ path: './.env' });
 const express = require('express');
 const bodyParser = require('body-parser');
 
@@ -41,7 +40,7 @@ db.mongoose.connect(db.url, {
 })
   .then(() => {
     // eslint-disable-next-line no-console
-    console.log('Connected to the Database!');
+    console.log('Connected to the Database! Db name: ', db.url.split('/')[3]);
   })
   .catch((err) => {
     // eslint-disable-next-line no-console
@@ -77,5 +76,6 @@ app.use((err, req, res, next) => {
 });
 
 require('./jobs').start();
+require('./events').start();
 
 module.exports = app;

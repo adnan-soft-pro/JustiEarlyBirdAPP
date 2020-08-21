@@ -6,10 +6,10 @@ const router = require('express').Router();
 const logger = require('../helpers/logger');
 const { mapAsync } = require('../helpers/mapAsync');
 const config = require('../config/index').app;
-
 const deleteProjectFromDynamo = require('../helpers/deleteDynamoData');
 const startChargeFlow = require('../helpers/startChargeFlow');
 const validateProjectUrl = require('../helpers/validateProjectUrl');
+const chargeForProject = require('../helpers/chargeForProject');
 
 const { exist_setIdKey, ownerOnly } = require('../middleware/projects');
 
@@ -17,6 +17,7 @@ const exist = exist_setIdKey('id');
 
 const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
+const UserModel = require('../models/user');
 const RewardChangeLogModel = require('../models/reward_change_log');
 const stripe = require('stripe')(config.stripeSecret);
 
@@ -44,6 +45,10 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
     const projectUpd = { ...project._doc, ...req.body };
+    if (projectUpd.password) {
+      project.credentials = undefined;
+      project.save();
+    }
 
     if ((projectUpd.site_type !== project.site_type) || (projectUpd.url !== project.url)) {
       try {
@@ -74,6 +79,14 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
  */
 router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
+    if (req.project.is_trialing) {
+      if (req.project.plan === 'now_plan' || !req.project.plan) {
+        if (req.project.stripe_subscription_id) {
+          await stripe.subscriptions.del(req.project.stripe_subscription_id);
+        }
+      }
+    }
+
     await deleteProjectFromDynamo(req.params.id);
     await req.project.deleteOne();
 
@@ -84,17 +97,22 @@ router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
-/**
- * Endpoint: /projects
- * Method: GET
- * @function
- * @name getProjects
- * @return {Array}  projects
- */
 router.get('/', async (req, res, next) => {
   try {
-    const { user } = req;
-    let projects = await ProjectModel.find({ user_id: user.id });
+    const { user, query: { unpaid, limit, page } } = req;
+    const projectСondition = { user_id: user.id };
+    if (unpaid) projectСondition.debt = { $gt: 0 };
+
+    const countProjects = await ProjectModel
+      .find(projectСondition)
+      .count()
+      .exec();
+    let projects = await ProjectModel
+      .find(projectСondition)
+      .sort({ createdAt: -1 })
+      .skip((+page - 1) * (+limit))
+      .limit(+limit)
+      .exec();
     projects = projects.map((project) => project._doc);
 
     await mapAsync(projects, async (project) => {
@@ -102,20 +120,20 @@ router.get('/', async (req, res, next) => {
       project.rewards = await RewardModel.find({ project_id: project._id });
     });
 
-    res.send(projects);
+    res.send({ countProjects, projects });
   } catch (err) {
     logger.error(err);
     next(new Error(err));
   }
 });
 
-const oneDay = 24 * 60 * 60 * 1000;
-const laterPlanPerDay = 15 * 100;
 router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
 
-    if (project.finished_at) return res.status(404).send('Project is already finished');
+    if (project.finished_at) {
+      return res.status(404).send('Project is already finished');
+    }
 
     project.finished_at = new Date();
     project.is_active = false;
@@ -135,16 +153,13 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
       }
 
       case ('later_plan'): {
-        // eslint-disable-next-line max-len
-        const daysInUse = Math.floor((project.finished_at - project.payment_configured_at) / oneDay);
-        // eslint-disable-next-line max-len
-        const initialDebt = (daysInUse - config.trialPeriodLaterPlan - project.days_in_pause) * laterPlanPerDay;
-        project.initial_debt = initialDebt <= 0 ? 0 : initialDebt;
-        project.debt = initialDebt <= 0 ? 0 : initialDebt;
-        project.charge_flow_status = initialDebt <= 0 ? 'not_needed' : 'scheduled';
-        if (initialDebt <= 0) {
+        if (project.initial_debt <= 0) {
           project.plan = undefined;
           project.stripe_payment_method_id = undefined;
+          project.is_payment_active = false;
+          project.charge_flow_status = 'not_needed';
+        } else {
+          project.charge_flow_status = 'scheduled';
         }
         await project.save();
         break;
@@ -167,13 +182,15 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
     const { project } = req;
 
     const reason400 = null
-      || (project.plan !== 'later_plan' && "Project doesn't have later_plan")
-      || (!project.finished_at && 'Project is not finished yet')
-      || (project.charge_flow_status !== 'scheduled' && 'Charge flow is already started for this project');
+      || (project.plan !== 'later_plan' && "Project doesn't have later_plan");
 
     if (reason400) return res.status(400).send(reason400);
-
-    await startChargeFlow(project, true);
+    if (project.finished_at) {
+      await startChargeFlow(project, true);
+    } else {
+      const user = await UserModel.findById(project.user_id);
+      await chargeForProject(project, user);
+    }
     res.sendStatus(200);
   } catch (err) {
     logger.error(err);
@@ -181,6 +198,7 @@ router.post('/:id/pay', exist, ownerOnly, async (req, res, next) => {
   }
 });
 
+const oneDay = 24 * 60 * 60 * 1000;
 router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
