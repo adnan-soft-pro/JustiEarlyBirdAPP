@@ -22,7 +22,7 @@ module.exports.start = () => {
     await pingMonitoring();
   });
 
-  cron.schedule('0 * * * *', async () => {
+  cron.schedule('* * * * *', async () => {
     await checkUserTrialJob();
   });
 };
