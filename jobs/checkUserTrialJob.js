@@ -15,11 +15,12 @@ module.exports = async () => {
       { createdAt: { $lte: new Date() - threeDays }, is_trial: true },
       { is_trial: false },
     );
-
-    await ProjectModel.updateMany(
-      { user_id: { $in: users.map((u) => u.id) } },
-      { is_trialing: false },
-    );
+    if (users) {
+      await ProjectModel.updateMany(
+        { user_id: { $in: users.map((u) => u.id) } },
+        { is_trialing: false },
+      );
+    }
   } catch (err) {
     logger.error("Can't check user trial");
     logger.error(err);
