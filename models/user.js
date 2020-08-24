@@ -16,6 +16,7 @@ const UserSchema = new Schema({
   timezone: { type: String },
   is_suspended: { type: Boolean, default: false },
   password_changed_at: { type: Date },
+  is_trial: { type: Boolean, default: true },
 }, {
   timestamps: true,
 });

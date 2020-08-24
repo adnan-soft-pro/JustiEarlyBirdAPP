@@ -389,6 +389,7 @@ router.post('/', async (req, res, next) => {
       site_type,
       email,
       password,
+      is_trialing: user.is_trial,
       url: validUrl,
       run_option: run_option || 1,
     });

@@ -11,7 +11,7 @@ const ProjectSchema = new Schema({
   display_name: { type: String },
   is_active: { type: Boolean, default: true },
   is_payment_active: { type: Boolean, default: false },
-  is_trialing: { type: Boolean, default: true },
+  is_trialing: { type: Boolean },
   plan: { type: String, enum: ['now_plan', 'later_plan'] },
   stripe_subscription_id: { type: String },
   stripe_payment_method_id: { type: String },
