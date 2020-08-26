@@ -17,6 +17,7 @@ const exist = exist_setIdKey('id');
 
 const ProjectModel = require('../models/project');
 const RewardModel = require('../models/reward');
+const RewardChangeLog = require('../models/reward_change_log');
 const UserModel = require('../models/user');
 const RewardChangeLogModel = require('../models/reward_change_log');
 const stripe = require('stripe')(config.stripeSecret);
@@ -117,6 +118,8 @@ router.delete('/:id', exist, ownerOnly, async (req, res, next) => {
       }
     }
 
+    await RewardModel.deleteMany({ project_id: req.project._id });
+    await RewardChangeLog.deleteMany({ project_id: req.project._id });
     await deleteProjectFromDynamo(req.params.id);
     await req.project.deleteOne();
     deleteProjectMessage(req.project, req.user.email);
