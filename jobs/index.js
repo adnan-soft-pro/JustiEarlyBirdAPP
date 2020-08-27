@@ -5,6 +5,7 @@ const retryCharges = require('./retryCharges');
 const pingMonitoring = require('./pingMonitoring');
 const increaseDebts = require('./increaseDebts');
 const checkUserTrialJob = require('./checkUserTrialJob');
+const checkProjectCredentials = require('./checkProjectCredentials');
 
 module.exports.start = () => {
   // Runs every day at 12:00 a.m.
@@ -22,7 +23,11 @@ module.exports.start = () => {
     await pingMonitoring();
   });
 
-  cron.schedule('0 * * * *', async () => {
+  cron.schedule('* * * * *', async () => {
     await checkUserTrialJob();
+  });
+
+  cron.schedule('*/5 * * * *', async () => {
+    await checkProjectCredentials();
   });
 };

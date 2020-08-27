@@ -5,6 +5,29 @@ const config = require('../config/index').app;
 const stripe = require('stripe')(config.stripeSecret);
 const ProjectModel = require('../models/project');
 
+const pauseProject = async (projectId) => {
+  const project = await ProjectModel.findById(projectId);
+  if (project
+    && project.is_active
+    && project.is_payment_active
+    && !project.credentials
+    && project.plan) {
+    if (project.plan === 'later_plan') {
+      project.last_paused_at = new Date();
+    } else if (project.plan === 'now_plan') {
+      await stripe.subscriptions.update(
+        project.stripe_subscription_id,
+        { pause_collection: { behavior: 'void' } },
+      );
+    }
+
+    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+    project.is_active = false;
+
+    await project.save();
+  }
+};
+
 module.exports = () => {
   ProjectModel.watch().on('change', async (data) => {
     const {
@@ -22,6 +45,7 @@ module.exports = () => {
             );
           }
         }
+        await pauseProject(documentKey._id);
       }
       if (operationType === 'replace') {
         if ('display_name' in fullDocument) {
@@ -33,6 +57,8 @@ module.exports = () => {
             );
           }
         }
+
+        await pauseProject(fullDocument._id);
       }
     } catch (err) {
       console.log('err', err);

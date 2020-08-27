@@ -96,6 +96,7 @@ const stripeEventHandlers = {
     const oldSubscription = project.stripe_subscription_id;
     project.plan = 'now_plan';
     project.payment_configured_at = new Date();
+    project.is_payment_active = true;
     project.stripe_subscription_id = subscription.id;
     project.finished_at = undefined;
 
@@ -135,6 +136,7 @@ const stripeEventHandlers = {
     if (!project.is_payment_active && subscription.status === 'active') {
       project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     }
+
     project.is_payment_active = ['active', 'trialing'].includes(subscription.status);
     project.debt = ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15;
     if (project.is_trialing && !subscription.status === 'trialing') {
