@@ -8,7 +8,7 @@ module.exports = async () => {
     if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
       const projects = await ProjectModel.find({
         credentials: undefined,
-        createdAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) },
+        updatedAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) },
       });
 
       projects.forEach((project) => {

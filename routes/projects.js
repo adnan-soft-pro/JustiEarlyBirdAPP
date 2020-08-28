@@ -75,10 +75,6 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
   try {
     const { project } = req;
     const projectUpd = { ...project._doc, ...req.body };
-    if (projectUpd.password) {
-      project.credentials = undefined;
-      project.save();
-    }
 
     if ((projectUpd.site_type !== project.site_type) || (projectUpd.url !== project.url)) {
       try {
@@ -90,6 +86,12 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
 
     if (project.is_active && project.is_active !== projectUpd.is_active) {
       await deleteProjectFromDynamo(project.id).catch(() => { });
+    }
+    if (req.project.email !== projectUpd.email
+      || projectUpd.password
+      || req.project.url !== projectUpd.url) {
+      project.credentials = undefined;
+      project.save();
     }
 
     res.send(await ProjectModel.findByIdAndUpdate(project.id, projectUpd, { new: true }));
