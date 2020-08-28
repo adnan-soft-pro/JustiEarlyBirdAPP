@@ -8,7 +8,7 @@ const mixpanel = Mixpanel.init(config.mixpanelToken);
 // create or update a user in Mixpanel
 
 const currentUser = async (distinct_id, fullname, email, stripe_id, is_admin,
-  location, timezone, is_suspended, signUp, plan) => {
+  location, timezone, is_suspended, signUp, plan, referrer) => {
   if (process.env.NODE_ENV !== 'production') return 1;
   const user = {
     $first_name: fullname,
@@ -22,6 +22,9 @@ const currentUser = async (distinct_id, fullname, email, stripe_id, is_admin,
   };
   if (signUp) {
     user.$created = (new Date()).toISOString();
+  }
+  if (referrer) {
+    user.referrer = referrer;
   }
   if (plan) {
     const projects = await ProjectModel.find({ user_id: distinct_id, is_payment_active: true });

@@ -14,6 +14,7 @@ const UserSchema = new Schema({
   is_admin: { type: Boolean },
   location: { type: String },
   timezone: { type: String },
+  referrer: { type: String },
   is_suspended: { type: Boolean, default: false },
   password_changed_at: { type: Date },
   is_trial: { type: Boolean, default: true },
