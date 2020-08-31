@@ -10,7 +10,7 @@ const pauseProject = async (projectId) => {
   if (project
     && project.is_active
     && project.is_payment_active
-    && !project.credentials
+    && project.credentials === false
     && project.plan) {
     if (project.plan === 'later_plan') {
       project.last_paused_at = new Date();
