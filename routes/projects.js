@@ -92,6 +92,9 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
       || projectUpd.password
       || req.project.url !== projectUpd.url) {
       project.credentials = undefined;
+      if (projectUpd.is_error) {
+        project.is_active = true;
+      }
       project.save();
     }
 

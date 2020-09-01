@@ -20,7 +20,7 @@ const pauseProject = async (projectId) => {
         { pause_collection: { behavior: 'void' } },
       );
     }
-
+    project.is_error = true;
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = false;
 
@@ -28,6 +28,28 @@ const pauseProject = async (projectId) => {
   }
 };
 
+const oneDay = 24 * 60 * 60 * 1000;
+const unpauseProject = async (projectId) => {
+  const project = await ProjectModel.findById(projectId);
+  if (project
+    && project.is_active
+    && project.is_payment_active
+    && project.credentials
+    && project.plan
+    && project.is_error) {
+    if (project.plan === 'later_plan') {
+      project.days_in_pause += Math.floor((new Date() - project.last_paused_at || 0) / oneDay);
+    } else if (project.plan === 'now_plan') {
+      await stripe.subscriptions.update(
+        project.stripe_subscription_id,
+        { pause_collection: '' },
+      );
+    }
+    project.is_error = false;
+    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+    await project.save();
+  }
+};
 module.exports = () => {
   ProjectModel.watch().on('change', async (data) => {
     const {
@@ -46,6 +68,7 @@ module.exports = () => {
           }
         }
         await pauseProject(documentKey._id);
+        await unpauseProject(documentKey._id);
       }
       if (operationType === 'replace') {
         if ('display_name' in fullDocument) {
@@ -59,6 +82,7 @@ module.exports = () => {
         }
 
         await pauseProject(fullDocument._id);
+        await unpauseProject(fullDocument._id);
       }
     } catch (err) {
       console.log('err', err);

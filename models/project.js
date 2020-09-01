@@ -35,6 +35,7 @@ const ProjectSchema = new Schema({
   total_billing_time: { type: Number, default: 0 },
   is_finished: { type: Boolean, default: false },
   last_debt_increased_at: { type: Date },
+  is_error: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');
