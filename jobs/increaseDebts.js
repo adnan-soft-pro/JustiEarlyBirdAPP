@@ -17,6 +17,7 @@ module.exports = async () => {
     is_suspended: false,
     run_option: 1,
     plan: 'later_plan',
+    credentials: true,
   });
   await mapAsyncInSlices(
     projects.filter((p) => (p.last_debt_increased_at || 0) <= now - oneDay),

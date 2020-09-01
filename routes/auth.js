@@ -46,6 +46,7 @@ router.post('/register', async (req, res, next) => {
       email: _email,
       password,
       fullname,
+      referrer,
       ...extra
     } = req.body;
 
@@ -66,8 +67,10 @@ router.post('/register', async (req, res, next) => {
       email,
       fullname,
       password,
+      referrer,
       stripe_id: customer.id,
     });
+
     signUpMessaga(email, 'natively', fullname);
     mixpanelAnalytics.currentUser(
       user._id,
@@ -79,8 +82,13 @@ router.post('/register', async (req, res, next) => {
       user.timezone,
       user.is_suspended,
       true,
-      true,
+      false,
+      referrer,
     );
+    if (referrer) {
+      mixpanelAnalytics.currEvent(user._id, 'User referrer', 'user-referrer', 'add-user-referrer', 'User get referrer');
+      sendAnalytics('user-referrer', 'add-user-referrer', 'User get referrer');
+    }
     mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-native', 'New user signed up Natively');
 
     sendAnalytics('user-sign-up', 'signed-up-native', 'New user signed up Natively');
@@ -102,10 +110,29 @@ router.post('/register', async (req, res, next) => {
    */
 router.post('/login', async (req, res, next) => {
   try {
-    const { password, email } = req.body;
+    const { password, email, referrer } = req.body;
     const user = await UserModel.findOne({ email: new RegExp(`^${email}$`, 'i') });
-
     if (!user) return res.status(404).send('User is not found');
+
+    if (!user.referrer && referrer) {
+      await user.update({ referrer });
+      mixpanelAnalytics.currentUser(
+        user._id,
+        user.fullname,
+        user.email,
+        user.stripe_id,
+        user.is_admin,
+        user.location,
+        user.timezone,
+        user.is_suspended,
+        true,
+        false,
+        referrer,
+      );
+
+      mixpanelAnalytics.currEvent(user._id, 'User referrer', 'user-referrer', 'add-user-referrer', 'User get referrer');
+      sendAnalytics('user-referrer', 'add-user-referrer', 'User get referrer');
+    }
     if (user.is_suspended) {
       return res.status(403).send(
         'Please contact info@justearlybird.com to get support and resolve the situation. '
@@ -160,11 +187,32 @@ router.post('/login/social', async (req, res, next) => {
 
     const userData = await axios.get(socialUrls[req.body.social]);
     let user = await UserModel.findOne({ email: userData.data.email });
+    const { referrer } = req.body;
+    if (user && !user.referrer && referrer) {
+      await user.update({ referrer });
+      await user.update({ referrer });
+      mixpanelAnalytics.currentUser(
+        user._id,
+        user.fullname,
+        user.email,
+        user.stripe_id,
+        user.is_admin,
+        user.location,
+        user.timezone,
+        user.is_suspended,
+        true,
+        false,
+        referrer,
+      );
 
+      mixpanelAnalytics.currEvent(user._id, 'User referrer', 'user-referrer', 'add-user-referrer', 'User get referrer');
+      sendAnalytics('user-referrer', 'add-user-referrer', 'User get referrer');
+    }
     if (!user) {
       user = new UserModel();
       user.email = userData.data.email;
       user.fullname = userData.data.name;
+      user.referrer = referrer;
       const customer = await stripe.customers.create({ email: user.email });
       user.stripe_id = customer.id;
       if (req.body.social === 'google') {
@@ -197,6 +245,25 @@ router.post('/login/social', async (req, res, next) => {
           user.is_suspended,
           true,
         );
+        if (referrer) {
+          await user.update({ referrer });
+          mixpanelAnalytics.currentUser(
+            user._id,
+            user.fullname,
+            user.email,
+            user.stripe_id,
+            user.is_admin,
+            user.location,
+            user.timezone,
+            user.is_suspended,
+            true,
+            false,
+            referrer,
+          );
+
+          mixpanelAnalytics.currEvent(user._id, 'User referrer', 'user-referrer', 'add-user-referrer', 'User get referrer');
+          sendAnalytics('user-referrer', 'add-user-referrer', 'User get referrer');
+        }
         mixpanelAnalytics.currEvent(user._id, 'Sign up', 'user-sign-up', 'signed-up-facebook', 'New user signed up with Facebook');
       }
 
