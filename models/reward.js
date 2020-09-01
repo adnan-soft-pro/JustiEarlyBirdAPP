@@ -13,7 +13,6 @@ const RewardSchema = new Schema({
   minimum_stock: { type: Number },
   limit_stock: { type: Number },
   maximum_sales: { type: Number },
-  is_ended: { type: Boolean },
   enable_top_up: { type: Boolean, default: false },
   enable_limit_sales: { type: Boolean, default: false },
   last_checked: { type: Date },
