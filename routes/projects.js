@@ -282,6 +282,10 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
         + ' We look forward to helping you with this.',
       );
     }
+    if (req.user.is_trial) {
+      project.is_active = true;
+      return res.send(await project.save());
+    }
     switch (project.plan) {
       case ('later_plan'): {
         project.days_in_pause += Math.floor((new Date() - project.last_paused_at || 0) / oneDay);
@@ -312,6 +316,11 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
     const { project } = req;
     if (!project.is_active) {
       return res.status(400).send('Project already inactive');
+    }
+    if (req.user.is_trial) {
+      project.is_active = false;
+
+      return res.send(await project.save());
     }
 
     switch (project.plan) {
