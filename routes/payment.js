@@ -30,7 +30,12 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
       mode: 'subscription',
       customer: user.stripe_id,
       client_reference_id: project.id,
-      line_items: [{ price: config.nowPlanPriceId, quantity: 1 }],
+      line_items: [
+        {
+          price: user.ref_code
+            ? config.nowPlanPriceIdWithCode : config.nowPlanPriceId,
+          quantity: 1,
+        }],
       subscription_data: {
         trial_from_plan: false,
         metadata: {

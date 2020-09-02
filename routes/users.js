@@ -42,6 +42,22 @@ router.get('/:id', selfOnly, async (req, res, next) => {
   }
 });
 
+router.post('/setCode', async (req, res, next) => {
+  try {
+    const user = await UserModel.findById(req.user._id);
+    if (req.body.code === 'env3nty5-grow') {
+      user.ref_code = true;
+      user.save();
+      return res.send(user).status(200);
+    }
+
+    return res.status(403).send('Code not accepted');
+  } catch (err) {
+    logger.error(err);
+    next(new Error(err));
+  }
+});
+
 /**
  * Endpoint: /users/:id
  * Method: PUT

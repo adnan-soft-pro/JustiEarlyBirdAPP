@@ -28,6 +28,7 @@ const getConfig = () => ({
     jwtSecret: process.env.TOKEN_SECRET,
     monitoringUrl: process.env.MONITORING_URL,
     nowPlanPriceId: process.env.NOW_PLAN_PRICE_ID,
+    nowPlanPriceIdWithCode: process.env.NOW_PLAN_PRICE_ID_WITH_CODE,
     trialPeriodLaterPlan: +process.env.TRIAL_PERIOD_LATER_PLAN,
     pricePerDayLaterPlan: +process.env.PRICE_PER_DAY_LATER_PLAN,
     emailFrom: process.env.EMAIL_FROM,

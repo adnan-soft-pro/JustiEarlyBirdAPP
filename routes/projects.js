@@ -158,7 +158,6 @@ router.get('/', async (req, res, next) => {
     const { user, query: { unpaid, limit, page } } = req;
     const projectСondition = { user_id: user.id };
     if (unpaid) projectСondition.debt = { $gt: 0 };
-
     const countProjects = await ProjectModel
       .find(projectСondition)
       .count()
@@ -175,7 +174,6 @@ router.get('/', async (req, res, next) => {
       // eslint-disable-next-line no-param-reassign
       project.rewards = await RewardModel.find({ project_id: project._id });
     });
-
     res.send({ countProjects, projects });
   } catch (err) {
     logger.error(err);
