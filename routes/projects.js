@@ -91,12 +91,13 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
     if (req.project.email !== projectUpd.email
       || projectUpd.password
       || req.project.url !== projectUpd.url) {
+      delete projectUpd.credentials;
       project.credentials = undefined;
-      if (projectUpd.is_error) {
-        project.is_active = true;
-        project.is_error = false;
-      }
       project.save();
+      if (req.project.is_error) {
+        projectUpd.is_active = true;
+        projectUpd.is_error = false;
+      }
     }
 
     res.send(await ProjectModel.findByIdAndUpdate(project.id, projectUpd, { new: true }));
