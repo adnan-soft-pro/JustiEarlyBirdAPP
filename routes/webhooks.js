@@ -17,6 +17,12 @@ const bot = require('../bot/index');
 const mixpanelAnalytics = require('../helpers/mixpanelAnalytics');
 
 router.use(cors());
+const finishTrial = async (user) => {
+  await ProjectModel.updateMany(
+    { user_id: user._id },
+    { is_trialing: false },
+  );
+};
 
 const paymentInformationMessage = async (project, product) => {
   if (process.env.NODE_ENV && process.env.NODE_ENV !== 'test') {
@@ -99,6 +105,12 @@ const stripeEventHandlers = {
     project.is_payment_active = true;
     project.stripe_subscription_id = subscription.id;
     project.finished_at = undefined;
+    const user = await UserModel.findById(project.user_id);
+    if (user && user.is_trial) {
+      finishTrial(user);
+      user.is_trial = false;
+      await user.save();
+    }
 
     sendAnalytics('saved-payment-stripe', 'saved-payment-now-10', 'Save Payment Now 10 per day');
     findUserToMixpanel(project, 'saved-payment-now-10');
@@ -201,6 +213,12 @@ const stripeEventHandlers = {
     project.payment_configured_at = new Date();
     project.stripe_payment_method_id = setupIntent.payment_method;
     project.finished_at = undefined;
+    const user = await UserModel.findById(project.user_id);
+    if (user && user.is_trial) {
+      finishTrial(user);
+      user.is_trial = false;
+      await user.save();
+    }
     sendAnalytics('saved-payment-stripe', 'saved-payment-later-15', 'Save Payment Later 15 per day');
     findUserToMixpanel(project, 'saved-payment-later-15');
     if (process.env.NODE_ENV === 'production') {
