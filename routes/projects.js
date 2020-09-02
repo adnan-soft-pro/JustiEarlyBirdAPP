@@ -94,6 +94,7 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
       project.credentials = undefined;
       if (projectUpd.is_error) {
         project.is_active = true;
+        project.is_error = false;
       }
       project.save();
     }
@@ -299,9 +300,12 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
         break;
       }
       default: {
-        return res.status(400).send(`Project has incorrect plan ${project.plan}`);
+        project.is_active = true;
+        project.is_error = false;
+        res.send(await project.save());
       }
     }
+    project.is_error = false;
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = true;
     res.send(await project.save());
@@ -336,7 +340,8 @@ router.post('/:id/pause', exist, ownerOnly, async (req, res, next) => {
         break;
       }
       default: {
-        return res.status(400).send(`Project has incorrect plan ${project.plan}`);
+        project.is_active = false;
+        res.send(await project.save());
       }
     }
 

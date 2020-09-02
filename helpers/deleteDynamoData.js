@@ -8,8 +8,6 @@ const dynamoDB = new AWS.DynamoDB();
 const updateData = async (item, type, id) => {
   try {
     const updateParams = {
-      ExpressionAttributeValues: {
-      },
       Key: {
         id: {
           S: item.id.S,
@@ -21,24 +19,31 @@ const updateData = async (item, type, id) => {
     };
     if (type === 'check') {
       const index = item.check_project_ids.SS.indexOf(id);
-      if (index > -1) {
+      if (index === 0) {
+        updateParams.UpdateExpression = 'REMOVE check_project_ids';
+      } else if (index > 0) {
         item.check_project_ids.SS.splice(index, 1);
+        updateParams.ExpressionAttributeValues = {};
+        updateParams.UpdateExpression = 'SET check_project_ids = :i';
+        updateParams.ExpressionAttributeValues = {
+          ':i': {
+            SS: item.check_project_ids.SS,
+          },
+        };
       }
-      updateParams.ExpressionAttributeValues = {
-        ':i': {
-          SS: item.check_project_ids.SS,
-        },
-      };
     } else {
       const index = item.upd_project_ids.SS.indexOf(id);
-      if (index > -1) {
+      if (index === 0) {
+        updateParams.UpdateExpression = 'REMOVE upd_project_ids';
+      } else if (index > 0) {
         item.upd_project_ids.SS.splice(index, 1);
+        updateParams.UpdateExpression = 'SET upd_project_ids = :i';
+        updateParams.ExpressionAttributeValues = {
+          ':i': {
+            SS: item.upd_project_ids.SS,
+          },
+        };
       }
-      updateParams.ExpressionAttributeValues = {
-        ':i': {
-          SS: item.upd_project_ids.SS,
-        },
-      };
     }
     await dynamoDB.updateItem(updateParams).promise();
   } catch (e) {

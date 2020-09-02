@@ -20,7 +20,6 @@ const pauseProject = async (projectId) => {
         { pause_collection: { behavior: 'void' } },
       );
     }
-    project.is_error = true;
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = false;
 
@@ -35,8 +34,7 @@ const unpauseProject = async (projectId) => {
     && project.is_active
     && project.is_payment_active
     && project.credentials
-    && project.plan
-    && project.is_error) {
+    && project.plan) {
     if (project.plan === 'later_plan') {
       project.days_in_pause += Math.floor((new Date() - project.last_paused_at || 0) / oneDay);
     } else if (project.plan === 'now_plan') {
@@ -45,7 +43,6 @@ const unpauseProject = async (projectId) => {
         { pause_collection: '' },
       );
     }
-    project.is_error = false;
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     await project.save();
   }
