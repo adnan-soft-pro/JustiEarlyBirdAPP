@@ -94,10 +94,7 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
       delete projectUpd.credentials;
       project.credentials = undefined;
       project.save();
-      if (req.project.is_error) {
-        projectUpd.is_active = true;
-        projectUpd.is_error = false;
-      }
+      if (project.is_error) projectUpd.is_active = true;
     }
 
     res.send(await ProjectModel.findByIdAndUpdate(project.id, projectUpd, { new: true }));
@@ -300,11 +297,9 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
       }
       default: {
         project.is_active = true;
-        project.is_error = false;
         res.send(await project.save());
       }
     }
-    project.is_error = false;
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.is_active = true;
     res.send(await project.save());
