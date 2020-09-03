@@ -18,7 +18,7 @@ const UserSchema = new Schema({
   is_suspended: { type: Boolean, default: false },
   password_changed_at: { type: Date },
   is_trial: { type: Boolean, default: true },
-  ref_code: { type: Boolean, default: false },
+  ref_code: { type: String },
 }, {
   timestamps: true,
 });
