@@ -27,6 +27,7 @@ const ProjectSchema = new Schema({
   last_charge_attempt_at: { type: Date },
   last_adjusted: { type: Date },
   total_adjusted: { type: Number },
+  total_checked: { type: Number },
   credentials: { type: Boolean },
   last_check: { type: Date },
   payment_intent_ids: { type: [String] },
