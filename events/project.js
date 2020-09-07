@@ -9,6 +9,7 @@ const startBillingTime = async (projectId) => {
   const project = await ProjectModel.findById(projectId);
   if (project.is_active && project.credentials && project.last_billing_started_at === undefined) {
     project.last_billing_started_at = new Date();
+    await project.save();
   }
 };
 
