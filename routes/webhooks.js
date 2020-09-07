@@ -103,6 +103,7 @@ const stripeEventHandlers = {
     project.plan = 'now_plan';
     project.payment_configured_at = new Date();
     project.is_payment_active = true;
+    project.last_billing_started_at = new Date();
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.stripe_subscription_id = subscription.id;
     project.finished_at = undefined;
