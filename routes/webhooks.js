@@ -103,8 +103,6 @@ const stripeEventHandlers = {
     project.plan = 'now_plan';
     project.payment_configured_at = new Date();
     project.is_payment_active = true;
-    project.last_billing_started_at = new Date();
-    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
     project.stripe_subscription_id = subscription.id;
     project.finished_at = undefined;
     const user = await UserModel.findById(project.user_id);
@@ -147,10 +145,6 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
-    if (!project.is_payment_active && subscription.status === 'active') {
-      project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
-    }
-
     project.is_payment_active = ['active', 'trialing'].includes(subscription.status);
     project.debt = ['active', 'trialing', 'canceled'].includes(subscription.status) ? 0 : 15;
     if (project.is_trialing && !subscription.status === 'trialing') {
@@ -185,7 +179,7 @@ const stripeEventHandlers = {
     project.stripe_subscription_id = '';
     project.plan = undefined;
     project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
-
+    project.last_billing_started_at = undefined;
     await project.save();
 
     res.sendStatus(200);
@@ -208,8 +202,6 @@ const stripeEventHandlers = {
       return res.sendStatus(200);
     }
 
-    project.last_billing_started_at = new Date();
-    project.total_billing_time -= (+config.trialPeriodLaterPlan);
     project.plan = 'later_plan';
     project.is_payment_active = true;
     project.payment_configured_at = new Date();

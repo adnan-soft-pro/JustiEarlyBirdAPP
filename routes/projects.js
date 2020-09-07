@@ -218,7 +218,8 @@ router.post('/:id/finish', exist, ownerOnly, async (req, res, next) => {
           true,
         );
         mixpanelAnalytics.currEvent(req.user._id, 'clicks and confirm the end subscription', 'subscription-page-btn-end-sub', 'subscription-page-btn-end-sub-clicked', 'When a clicks and confirm the end subscription and pay with 14 days option');
-
+        project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+        project.last_billing_started_at = undefined;
         if (project.initial_debt <= 0) {
           project.plan = undefined;
           project.stripe_payment_method_id = undefined;
@@ -300,7 +301,7 @@ router.post('/:id/unpause', exist, ownerOnly, async (req, res, next) => {
         res.send(await project.save());
       }
     }
-    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+    project.last_billing_started_at = new Date();
     project.is_active = true;
     res.send(await project.save());
   } catch (err) {

@@ -5,6 +5,13 @@ const config = require('../config/index').app;
 const stripe = require('stripe')(config.stripeSecret);
 const ProjectModel = require('../models/project');
 
+const startBillingTime = async (projectId) => {
+  const project = await ProjectModel.findById(projectId);
+  if (project.is_active && project.credentials && project.last_billing_started_at === undefined) {
+    project.last_billing_started_at = new Date();
+  }
+};
+
 const pauseProject = async (projectId) => {
   const project = await ProjectModel.findById(projectId);
   if (project
@@ -47,7 +54,7 @@ const unpauseProject = async (projectId) => {
     }
     project.is_error = false;
 
-    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+    project.last_billing_started_at = new Date();
     await project.save();
   }
 };
@@ -68,6 +75,7 @@ module.exports = () => {
             );
           }
         }
+        await startBillingTime(documentKey._id);
         await pauseProject(documentKey._id);
         await unpauseProject(documentKey._id);
       }
@@ -81,7 +89,7 @@ module.exports = () => {
             );
           }
         }
-
+        await startBillingTime(fullDocument._id);
         await pauseProject(fullDocument._id);
         await unpauseProject(fullDocument._id);
       }
