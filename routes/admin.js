@@ -44,7 +44,8 @@ router.get('/user/:id', async (req, res, next) => {
     user.projects.forEach((project) => {
       if (project.last_billing_started_at === undefined) return 0;
       if (project.is_active && project.credentials) {
-        project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+        project.total_billing_time = +project.total_billing_time
+        + +(new Date() - project.last_billing_started_at) || 0;
       }
     });
 
