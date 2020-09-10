@@ -46,6 +46,7 @@ router.post('/setCode', async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user._id);
     switch (req.body.code) {
+      case 'Backerkit20':
       case 'enventys20': {
         user.ref_code = req.body.code;
         await user.save();
