@@ -45,12 +45,20 @@ router.get('/:id', selfOnly, async (req, res, next) => {
 router.post('/setCode', async (req, res, next) => {
   try {
     const user = await UserModel.findById(req.user._id);
+
+    /*
+    case 'Code_Name': {
+        user.discount = (discount %);
+        await user.save();
+        return res.send(user).status(200);
+      }
+    */
+
     switch (req.body.code) {
       case 'Backerkit20':
       case 'enventys20': {
-        user.ref_code = req.body.code;
+        user.discount = 20;
         await user.save();
-        user.ref_code = true;
         return res.send(user).status(200);
       }
       default: {

@@ -23,17 +23,23 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
       || (project.stripe_payment_method_id && 'Project Already Has a Payment Method');
 
     if (reason400) return res.status(400).send(reason400);
+    let coupon;
+    const env = process.env.NODE_ENV;
+    // eslint-disable-next-line max-len
+    // case (discount %) : { coupon = env === 'staging' ? 'Stage coupon id' : 'Prod coupon id'; break; }
+    switch (user.discount) {
+      case 20: { coupon = env === 'staging' ? 'V8lxKRW2' : 'diWqw6WT'; break; }
+      default: coupon = '';
+    }
 
-    // ! Create stripe checkout session in subscription mode
-    const session = await stripe.checkout.sessions.create({
+    const stripeData = {
       payment_method_types: ['card'],
       mode: 'subscription',
       customer: user.stripe_id,
       client_reference_id: project.id,
       line_items: [
         {
-          price: user.ref_code
-            ? config.nowPlanPriceIdWithCode : config.nowPlanPriceId,
+          price: config.nowPlanPriceId,
           quantity: 1,
         }],
       subscription_data: {
@@ -45,7 +51,10 @@ router.post('/:project_id/now_plan', exist, ownerOnly, async (req, res, next) =>
       },
       success_url: `${config.frontendURL}/myprojects`,
       cancel_url: `${config.frontendURL}/myprojects`,
-    });
+    };
+    if (coupon) stripeData.subscription_data.coupon = coupon;
+    // ! Create stripe checkout session in subscription mode
+    const session = await stripe.checkout.sessions.create(stripeData);
 
     res.send({ sessionId: session.id });
   } catch (err) {
