@@ -76,7 +76,7 @@ const findUserToMixpanel = async (project, event) => {
   }
   /// //////////////
   if (event === 'payment-received-stripe') {
-    mixpanelAnalytics.currEvent(user._id, 'Trial ended on staging', 'payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
+    mixpanelAnalytics.currEvent(user._id, 'Payment received', 'payment-received', 'payment-received-stripe', 'Payment Received on Stripe');
   }
 };
 
