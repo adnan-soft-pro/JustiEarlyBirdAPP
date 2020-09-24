@@ -92,6 +92,8 @@ router.put('/:id', exist, ownerOnly, async (req, res, next) => {
       || projectUpd.password
       || req.project.url !== projectUpd.url) {
       delete projectUpd.credentials;
+      projectUpd.is_finished = false;
+      project.is_finished = false;
       project.credentials = undefined;
       project.save();
       if (project.is_error) projectUpd.is_active = true;

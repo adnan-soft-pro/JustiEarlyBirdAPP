@@ -59,6 +59,27 @@ const unpauseProject = async (projectId) => {
     await project.save();
   }
 };
+
+const finishSubscriptionFinishedProject = async (projectId) => {
+  const project = await ProjectModel.findById(projectId);
+
+  if (project && project.is_finished && project.plan && !project.is_active && !project.is_error) {
+    if (project.plan === 'later_plan') {
+      project.last_paused_at = new Date();
+    } else if (project.plan === 'now_plan') {
+      await stripe.subscriptions.update(
+        project.stripe_subscription_id,
+        { pause_collection: { behavior: 'void' } },
+      );
+    }
+    project.is_error = true;
+    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+    project.is_active = false;
+
+    await project.save();
+  }
+};
+
 module.exports = () => {
   ProjectModel.watch().on('change', async (data) => {
     const {
@@ -79,6 +100,7 @@ module.exports = () => {
         await startBillingTime(documentKey._id);
         await pauseProject(documentKey._id);
         await unpauseProject(documentKey._id);
+        await finishSubscriptionFinishedProject(documentKey._id);
       }
       if (operationType === 'replace') {
         if ('display_name' in fullDocument) {
@@ -93,9 +115,38 @@ module.exports = () => {
         await startBillingTime(fullDocument._id);
         await pauseProject(fullDocument._id);
         await unpauseProject(fullDocument._id);
+        await finishSubscriptionFinishedProject(fullDocument._id);
       }
     } catch (err) {
       console.log('err', err);
     }
   });
 };
+
+// const finishSubscriptionFinishedProject = async (projectId) => {
+//   const project = await ProjectModel.findById(projectId);
+
+//   if (project && project.is_finished && project.plan && !project.finished_at) {
+//     project.finished_at = new Date();
+//     project.is_active = false;
+//     project.is_payment_active = false;
+//     await project.save();
+//     if (project.plan === 'now_plan') {
+//       if (project.stripe_subscription_id) {
+//         await stripe.subscriptions.del(project.stripe_subscription_id);
+//       }
+//     } else if (project.plan === 'later_plan') {
+//       project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+//       project.last_billing_started_at = undefined;
+//       if (project.initial_debt <= 0) {
+//         project.plan = undefined;
+//         project.stripe_payment_method_id = undefined;
+//         project.is_payment_active = false;
+//         project.charge_flow_status = 'not_needed';
+//       } else {
+//         project.charge_flow_status = 'scheduled';
+//       }
+//     }
+//     await project.save();
+//   }
+// };
