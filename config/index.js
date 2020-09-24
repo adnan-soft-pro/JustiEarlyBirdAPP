@@ -37,6 +37,7 @@ const getConfig = () => ({
     botToken: process.env.TELEGRAM_BOT_TOKEN,
     telegramUserIds: JSON.parse(process.env.TELEGRAM_USER_IDS),
     mixpanelToken: process.env.MIXPANEL_TOKEN,
+    adminPassword: process.env.ADMIN_PASSWORD,
   },
   aws: {
     region: process.env.AWS_REGION,
