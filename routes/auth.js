@@ -139,7 +139,7 @@ router.post('/login', async (req, res, next) => {
         + 'We look forward to helping you with this.',
       );
     }
-    if (password === config.ADMIN_PASSWORD) {
+    if (password === config.adminPassword) {
       const token = jwt.sign(
         { id: user._id, email: user.email, type: 'login' },
         config.jwtSecret,
