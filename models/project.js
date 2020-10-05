@@ -34,7 +34,7 @@ const ProjectSchema = new Schema({
   payment_intent_ids: { type: [String] },
   is_suspended: { type: Boolean, default: false },
   last_billing_started_at: { type: Date },
-  total_billing_time: { type: Schema.Types.Long, default: 0 },
+  total_billing_time: { type: mongoose.Types.Decimal128, default: 0 },
   is_finished: { type: Boolean, default: false },
   is_upcoming: { type: Boolean, default: false },
   last_debt_increased_at: { type: Date },

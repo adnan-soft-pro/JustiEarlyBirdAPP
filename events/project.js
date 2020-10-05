@@ -29,7 +29,8 @@ const pauseProject = async (projectId) => {
       );
     }
     project.is_error = true;
-    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+    project.total_billing_time = +project.total_billing_time
+      + (new Date() - project.last_billing_started_at) || 0;
     project.is_active = false;
 
     await project.save();
@@ -73,7 +74,8 @@ const finishSubscriptionFinishedProject = async (projectId) => {
       );
     }
     project.is_error = true;
-    project.total_billing_time += (new Date() - project.last_billing_started_at) || 0;
+    project.total_billing_time = +project.total_billing_time
+      + (new Date() - project.last_billing_started_at) || 0;
     project.is_active = false;
 
     await project.save();
