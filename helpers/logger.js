@@ -1,7 +1,10 @@
 /* eslint-disable no-console */
+const bot = require('../bot/errorCatchBot');
+
 const logger = {
   error: (log) => {
     console.error(`${new Date().toUTCString()}: ${log}`);
+    bot.sendMessage(`${new Date().toUTCString()}: ${log}`);
   },
   info: (log) => {
     console.info(`${new Date().toUTCString()}: ${log}`);

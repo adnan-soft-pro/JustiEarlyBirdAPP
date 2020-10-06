@@ -22,6 +22,7 @@ module.exports = [
   'TELEGRAM_BOT_TOKEN',
   'MIXPANEL_TOKEN',
   'ADMIN_PASSWORD',
+  'ERR_TELEGRAM_BOT_TOKEN',
 ];
 
 if (process.env.NODE_ENV === 'production') {

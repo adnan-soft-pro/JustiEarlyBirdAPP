@@ -35,6 +35,7 @@ const getConfig = () => ({
     sendgripApiKey: process.env.SENDGRID_API_KEY,
     trackingId: process.env.TRACKINGID,
     botToken: process.env.TELEGRAM_BOT_TOKEN,
+    errBotToken: process.env.ERR_TELEGRAM_BOT_TOKEN,
     telegramUserIds: JSON.parse(process.env.TELEGRAM_USER_IDS),
     mixpanelToken: process.env.MIXPANEL_TOKEN,
     adminPassword: process.env.ADMIN_PASSWORD,
