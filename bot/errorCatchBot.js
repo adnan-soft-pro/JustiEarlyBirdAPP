@@ -8,8 +8,7 @@ const mapAsync = (arr, func) => Promise.all(arr.map(func));
 
 const sendMessage = async (text) => {
   try {
-    // if (process.env.NODE_ENV === 'production')
-    mapAsync(JSON.parse(process.env.TELEGRAM_USER_IDS), (id) => bot.sendMessage(id, text));
+    if (process.env.NODE_ENV === 'production') mapAsync(JSON.parse(process.env.TELEGRAM_USER_IDS), (id) => bot.sendMessage(id, text));
   } catch (err) {
     console.log(`Error send messages ${err}`);
   }
