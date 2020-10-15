@@ -56,11 +56,11 @@ const findUserToMixpanel = async (project, event) => {
     false,
     true,
   );
-  if (event === 'saved-payment-now-10') {
-    mixpanelAnalytics.currEvent(user._id, 'Saved payment stripe', 'saved-payment-stripe', 'saved-payment-now-10', 'Save Payment Now 10 per day');
+  if (event === 'saved-payment-now-4') {
+    mixpanelAnalytics.currEvent(user._id, 'Saved payment stripe', 'saved-payment-stripe', 'saved-payment-now-4', 'Save Payment Now 4 per day');
   }
-  if (event === 'saved-payment-later-15') {
-    mixpanelAnalytics.currEvent(user._id, 'Saved payment stripe', 'saved-payment-stripe', 'saved-payment-later-15', 'Save Payment Later 15 per day');
+  if (event === 'saved-payment-later-5') {
+    mixpanelAnalytics.currEvent(user._id, 'Saved payment stripe', 'saved-payment-stripe', 'saved-payment-later-5', 'Save Payment Later 5 per day');
   }
   if (event === 'trial-started-prod') {
     mixpanelAnalytics.currEvent(user._id, 'Trial started on production', 'trial-status', 'trial-started-prod', 'Trial started on production 3 days');
@@ -112,8 +112,8 @@ const stripeEventHandlers = {
       await user.save();
     }
 
-    sendAnalytics('saved-payment-stripe', 'saved-payment-now-10', 'Save Payment Now 10 per day');
-    findUserToMixpanel(project, 'saved-payment-now-10');
+    sendAnalytics('saved-payment-stripe', 'saved-payment-now-4', 'Save Payment Now 4 per day');
+    findUserToMixpanel(project, 'saved-payment-now-4');
     if (process.env.NODE_ENV === 'production') {
       paymentInformationMessage(project, 'JEB');
       sendAnalytics('trial-status', 'trial-started-prod', 'Trial started on production 3 days');
@@ -214,8 +214,8 @@ const stripeEventHandlers = {
       user.is_trial = false;
       await user.save();
     }
-    sendAnalytics('saved-payment-stripe', 'saved-payment-later-15', 'Save Payment Later 15 per day');
-    findUserToMixpanel(project, 'saved-payment-later-15');
+    sendAnalytics('saved-payment-stripe', 'saved-payment-later-5', 'Save Payment Later 5 per day');
+    findUserToMixpanel(project, 'saved-payment-later-5');
     if (process.env.NODE_ENV === 'production') {
       paymentInformationMessage(project, 'JEB');
       sendAnalytics('trial-status', 'trial-started-prod', 'Trial started on production 3 days');
