@@ -39,6 +39,7 @@ const ProjectSchema = new Schema({
   is_upcoming: { type: Boolean, default: false },
   last_debt_increased_at: { type: Date },
   is_error: { type: Boolean, default: false },
+  new: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Project', ProjectSchema, 'projects');

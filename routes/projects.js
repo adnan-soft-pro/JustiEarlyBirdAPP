@@ -413,6 +413,7 @@ router.post('/', async (req, res, next) => {
       is_trialing: user.is_trial,
       url: validUrl,
       run_option: run_option || 1,
+      new: true,
     });
 
     mixpanelAnalytics.currentUser(

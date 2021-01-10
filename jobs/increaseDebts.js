@@ -25,7 +25,7 @@ module.exports = async () => {
     async (project) => {
       try {
         if (project.payment_configured_at <= now - trialPeriodLaterPlan) {
-          project.initial_debt = (project.initial_debt || 0) + config.pricePerDayLaterPlan;
+          project.initial_debt = (project.initial_debt || 0) + (project.new ? config.pricePerDayLaterPlan : config.oldPricePerDayLaterPlan);
           project.debt = project.initial_debt;
         }
         project.last_debt_increased_at = now;
